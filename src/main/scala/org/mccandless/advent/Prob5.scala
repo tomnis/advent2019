@@ -1,5 +1,8 @@
 package org.mccandless.advent
 
+import org.mccandless.advent.intcode._
+
+
 object Prob5 extends Parser[Array[Int]] with App {
 
   override val inputFileName = "prob5_input.txt"
@@ -14,12 +17,11 @@ object Prob5 extends Parser[Array[Int]] with App {
 
   def parseInstruction(instruction: Int): Instruction = {
     val code: Int = instruction % 100
-    // TODO look up number of expected args
 
     val opCode: OpCode = OpCode(code)
 
     // we know its a 2 digit opcode
-    val modes: List[ParameterMode] = (instruction - code).toString.reverse.toList.drop(2).map(_.toString.toInt).map(ParameterMode.apply)
+    val modes: List[ParameterMode] = (instruction / 100).toString.reverse.toList.map(a => ParameterMode(a.toString.toInt))
 
     val missingModes: List[ParameterMode] = List.fill(opCode.numParams - modes.length)(PositionMode)
 
@@ -37,7 +39,7 @@ object Prob5 extends Parser[Array[Int]] with App {
 
 
 
-  def interpretInstruction(memory: Seq[Int], instructionPointer: Int, instruction: Instruction, parameters: List[Int]): WriteMemOp = {
+  def interpretInstruction(memory: Seq[Int], instruction: Instruction, parameters: List[Int]): MemOp = {
     require(parameters.size == instruction.opCode.numParams)
     require(parameters.size == instruction.modes.size)
 
@@ -49,7 +51,7 @@ object Prob5 extends Parser[Array[Int]] with App {
     }
 
     // TODO this might be wrong
-    val finalResolvedParameters = if (parameters.length < 3) List(parameters.last)
+    val finalResolvedParameters = if (parameters.length < 2) List(parameters.last)
     else resolvedParameters :+ parameters.last
 
 //    println(finalResolvedParameters)
@@ -58,17 +60,18 @@ object Prob5 extends Parser[Array[Int]] with App {
 
 
   }
-  val xyz = interpretInstruction(Seq(1002,4,3,4,33), 0, parseInstruction(1002), List(4,3,4))
-  require(interpretInstruction(Seq(1002,4,3,4,33), 0, parseInstruction(1002), List(4,3,4)) == WriteMemOp(99, 4))
+  require(interpretInstruction(Seq(1002,4,3,4,33), parseInstruction(1002), List(4,3,4)) == WriteMemOp(99, 4))
 
 
 
-  def run(memory: Array[Int]): Array[Int] = {
+  def run(memory: Array[Int]): RunResult = {
     var instructionPointer: Int = 0
     var instruction: Instruction = parseInstruction(memory(instructionPointer))
 
+    var output: Int = -1
     while (instruction.opCode != HALT) {
 
+      val oldInstructionPointer: Int = instructionPointer
 
 
       // interpret instruction
@@ -76,121 +79,65 @@ object Prob5 extends Parser[Array[Int]] with App {
 
       println(s" $instructionPointer $instruction $parameters")
       instruction.opCode match {
-        case ADD | MULT | INPUT => {
-          val wOp = interpretInstruction(memory, instructionPointer, instruction, parameters)
+        case ADD | MULT | INPUT | LESS_THAN | EQUALS => {
+          val wOp = interpretInstruction(memory, instruction, parameters).asInstanceOf[WriteMemOp]
           println(s"$wOp")
           memory(wOp.address) = wOp.value
         }
+        case JUMP_IF_TRUE | JUMP_IF_FALSE => {
+          val jOp = interpretInstruction(memory, instruction, parameters).asInstanceOf[JumpOp]
+          jOp.maybeNewInstructionPointer.foreach(ip => instructionPointer = ip)
+
+        }
         case OUTPUT => {
           println(s"outputting: ${memory(parameters.head)}")
+          output = memory(parameters.head)
         }
       }
 
 
       // update ip
-      instructionPointer += (1 + instruction.opCode.numParams)
+      if (instructionPointer == oldInstructionPointer) {
+        instructionPointer += (1 + instruction.opCode.numParams)
+      }
       instruction = parseInstruction(memory(instructionPointer))
     }
 
-    memory
+    println("HALT\n\n")
+    RunResult(output, memory.toSeq)
   }
 
-  require(run(Array(1002,4,3,4,33)).toList == Array(1002,4,3,4,99).toList)
+  require(run(Array(1002,4,3,4,33)).memory ==  Seq(1002,4,3,4,99))
+  // input eq 8 (position)
+  require(run(Array(3,9,8,9,10,9,4,9,99,-1,8)).output == 0)
+  // input lt 8 (position)
+  require(run(Array(3,12,6,12,15,1,13,14,13,4,13,99,-1,0,1,9)).output == 1)
+  // input eq 8 (immediate)
+  require(run(Array(3,3,1108,-1,8,3,4,3,99)).output == 0)
+  // input lt 8 (immediate)
+  require(run(Array(3,3,1107,-1,8,3,4,3,99)).output == 1)
+
+  require(run(Array(3,12,6,12,15,1,13,14,13,4,13,99,-1,0,1,9)).output == 1)
+
+  require(run(Array(3,3,1105,-1,9,1101,0,0,12,4,12,99,1)).output == 1)
 
 
   run(mem)
 }
 
+case class RunResult(output: Int, memory: Seq[Int])
 
 
-case class WriteMemOp(value: Int, address: Int)
+sealed trait MemOp
+case class WriteMemOp(value: Int, address: Int) extends MemOp
+case class JumpOp(maybeNewInstructionPointer: Option[Int]) extends MemOp
 
 
+// an opcode together with parameter modes. intentionally defined separately from any parameters
 case class Instruction(opCode: OpCode, modes: List[ParameterMode])
-
 // parameters that an instruction writes to will never be in immediate mode
 
 
-sealed trait OpCode {
-  val numParams: Int
-
-  def run(resolvedParameters: Seq[Int]): WriteMemOp
-
-}
-case object ADD extends OpCode {
-  override val numParams: Int = 3
-
-
-  override def run(resolvedParameters: Seq[Int]): WriteMemOp = WriteMemOp(
-    resolvedParameters(0) + resolvedParameters(1),
-    resolvedParameters(2)
-  )
-}
-
-case object MULT extends OpCode {
-  override val numParams: Int = 3
-
-  override def run(resolvedParameters: Seq[Int]): WriteMemOp = WriteMemOp(
-    resolvedParameters(0) * resolvedParameters(1),
-    resolvedParameters(2)
-  )
-}
-
-case object INPUT extends OpCode {
-  override val numParams: Int = 1
-
-  override def run(resolvedParameters: Seq[Int]): WriteMemOp = WriteMemOp(
-    1, resolvedParameters.head
-  )
-}
-
-case object OUTPUT extends OpCode {
-  override val numParams: Int = 1
-  override def run(resolvedParameters: Seq[Int]): WriteMemOp = ???
-}
-
-
-
-
-// if param is nonzero, sets ip to second parameter
-case object JUMP_IF_TRUE extends OpCode {
-  override val numParams: Int = 2
-  override def run(resolvedParameters: Seq[Int]): WriteMemOp = ???
-}
-
-
-// if param is zero, sets ip to second parameter
-case object JUMP_IF_FALSE extends OpCode {
-  override val numParams: Int = 2
-  override def run(resolvedParameters: Seq[Int]): WriteMemOp = ???
-}
-
-
-
-case object LESS_THAN extends OpCode {
-  override val numParams: Int = 3
-  override def run(resolvedParameters: Seq[Int]): WriteMemOp = ???
-}
-
-
-
-case object HALT extends OpCode {
-  override val numParams: Int = 0
-  override def run(resolvedParameters: Seq[Int]): WriteMemOp = ???
-}
-
-object OpCode {
-  def apply(opCode: Int): OpCode = {
-    opCode match {
-      case 1 => ADD
-      case 2 => MULT
-      case 3 => INPUT
-      case 4 => OUTPUT
-      case 99 => HALT
-      case other => throw new IllegalArgumentException(s"unknown opcode $other")
-    }
-  }
-}
 
 
 
