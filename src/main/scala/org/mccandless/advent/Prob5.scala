@@ -1,6 +1,7 @@
 package org.mccandless.advent
 
 import org.mccandless.advent.intcode._
+import org.mccandless.advent.intcode2.Machine
 
 
 object Prob5 extends Parser[Array[Int]] with App {
@@ -122,7 +123,9 @@ object Prob5 extends Parser[Array[Int]] with App {
   require(run(Array(3,3,1105,-1,9,1101,0,0,12,4,12,99,1)).output == 1)
 
 
-  run(mem)
+  run(mem.clone())
+
+  println(Machine(mem.clone()).run())
 }
 
 case class RunResult(output: Int, memory: Seq[Int])
