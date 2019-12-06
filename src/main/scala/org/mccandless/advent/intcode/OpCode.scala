@@ -1,157 +1,102 @@
 package org.mccandless.advent.intcode
 
 
-import TypeAliases._
-import org.mccandless.advent.intcode.MULT.run
-import org.mccandless.advent.{JumpOp, MemOp, ParameterMode, WriteMemOp}
+// goal: dont pass the memory around
+sealed trait Op {
 
+  val numInputs: Int
+  val numOutputs: Int
+  val modes: Seq[Mode]
 
-// TODO fill in
-//trait TernaryOp extends OpCode {
-//
-//}
+  def numParams: Int = numInputs + numOutputs
 
-
-sealed trait OpCode {
-  type Arity[_] <: Product
-  type Params = Arity[Int]
-
-  val numParams: Int
-
-//  def resolve(memory: Seq[Int], modes: Arity[ParameterMode], parameters: List[Int]): Arity[Int]
-
-  def run(resolvedParameters: List[Int]): MemOp
-
-  // todo rename execute
-  def run(resolvedParameters: Params): MemOp
+  // assumes input params have already been resolved
+  def run(params: Seq[Int]): Effect
 }
 
 
 
-
-
-case object ADD extends OpCode {
-  override type Arity[_] = Ternary[_]
-//  override type Input = (Int, Int, Int)
-  override val numParams: Int = 3
-
-
-  override def run(resolvedParameters: Params): MemOp = {
-    val (a: Int, b: Int, addr: Int) = resolvedParameters
-    WriteMemOp(a + b, addr)
-  }
-
-  override def run(resolvedParameters: List[Int]): MemOp = run(resolvedParameters.head, resolvedParameters(1), resolvedParameters(2))
+trait Nullary extends Op {
+  final override val numInputs: Int = 0
+  final override val numOutputs: Int = 1
 }
 
-
-case object MULT extends OpCode {
-  override type Arity[_] = Ternary[_]
-  override val numParams: Int = 3
-
-  override def run(resolvedParameters: Params): MemOp = {
-    val (a: Int, b: Int, addr: Int) = resolvedParameters
-    WriteMemOp(a * b, addr)
-  }
-  override def run(resolvedParameters: List[Int]): MemOp = run(resolvedParameters.head, resolvedParameters(1), resolvedParameters(2))
+trait Unary extends Op {
+  final override val numInputs: Int = 1
+  final override val numOutputs: Int = 1
 }
 
-
-case object INPUT extends OpCode {
-  override type Arity[_] = Unary[_]
-  override val numParams: Int = 1
-
-  // TODO ask the oracle
-//  override def run(resolvedParameters: Arity[Int]): MemOp = WriteMemOp( 5, resolvedParameters._1)
-  override def run(resolvedParameters: List[Int]): MemOp = run(new Tuple1[Int](resolvedParameters.head))
-
-  override def run(resolvedParameters: Params): MemOp = WriteMemOp(5, resolvedParameters._1.toString.toInt)
+// a binary operation with 2 inputs and a single output
+trait Binary extends Op {
+  final override val numInputs: Int = 2
+  final override val numOutputs: Int = 1
 }
 
 
 
+case class ADD(modes: Seq[Mode]) extends Op with Binary {
+  override def run(params: Seq[Int]): Effect = Write(params.head + params(1), params(2))
+}
 
-case object OUTPUT extends OpCode {
-  override type Arity[_] = Unary[_]
-  override val numParams: Int = 1
-  override def run(resolvedParameters: Params): MemOp = ???
+case class MULT(modes: Seq[Mode]) extends Op with Binary {
+  override def run(params: Seq[Int]): Effect = Write(params.head * params(1), params(2))
+}
 
-  override def run(resolvedParameters: List[Int]): MemOp = ???
+case class INPUT(modes: Seq[Mode]) extends Op with Nullary {
+  override def run(params: Seq[Int]): Effect = Write(Oracle.input(), params.head)
+}
+
+case class OUTPUT(modes: Seq[Mode]) extends Op with Nullary {
+  override def run(params: Seq[Int]): Effect = Print(params.head)
+}
+
+case class JUMP_IF_TRUE(modes: Seq[Mode]) extends Op {
+  override val numInputs: Int = 2
+  override val numOutputs: Int = 0
+  override def run(params: Seq[Int]): Effect = if (params.head != 0) Jump(params(1)) else Pure
+}
+
+case class JUMP_IF_FALSE(modes: Seq[Mode]) extends Op {
+  override val numInputs: Int = 2
+  override val numOutputs: Int = 0
+  override def run(params: Seq[Int]): Effect = if (params.head == 0) Jump(params(1)) else Pure
+}
+
+case class LESS_THAN(modes: Seq[Mode]) extends Op with Binary {
+  override def run(params: Seq[Int]): Effect = Write(if (params.head < params(1)) 1 else 0, params(2))
+}
+
+case class EQUALS(modes: Seq[Mode]) extends Op with Binary {
+  override def run(params: Seq[Int]): Effect = Write(if (params.head == params(1)) 1 else 0, params(2))
+}
+
+case object HALT extends Op {
+  override val numInputs: Int = 0
+  override val numOutputs: Int = 0
+  override val modes: Seq[Mode] = Seq.empty
+
+  // TODO separate halt effect?
+  override def run(params: Seq[Int]): Effect = Pure
 }
 
 
 
-// if param is nonzero, sets ip to second parameter
-case object JUMP_IF_TRUE extends OpCode {
-  override type Arity[_] = Binary[_]
-  override val numParams: Int = 2
-  override def run(resolvedParameters: Params): JumpOp = {
-    val (a: Int, ip: Int) = resolvedParameters
-    JumpOp(if (a != 0) Option(ip) else None)
-  }
+object Op {
 
-  override def run(resolvedParameters: List[Int]): MemOp = run(resolvedParameters.head, resolvedParameters(1))
-}
+  def apply(op: Int): Op = {
+    // 2 digit opcode
+    val opCode: Int = op % 100
+    val modes: Seq[Mode] = Mode.parse(op / 100)
 
-
-// if param is zero, sets ip to second parameter
-case object JUMP_IF_FALSE extends OpCode {
-  override type Arity[_] = Binary[_]
-  override val numParams: Int = 2
-  override def run(resolvedParameters: Params): JumpOp = {
-    val (a: Int, ip: Int) = resolvedParameters
-    JumpOp(if (a == 0) Option(ip) else None)
-  }
-
-  override def run(resolvedParameters: List[Int]): MemOp = run(resolvedParameters.head, resolvedParameters(1))
-}
-
-
-// if first parameter is less than second parameter, stores 1 in 3rd parameter
-case object LESS_THAN extends OpCode {
-  override type Arity[_] = Ternary[_]
-  override val numParams: Int = 3
-  override def run(resolvedParameters: Params): WriteMemOp = {
-    val (a: Int, b: Int, addr: Int) = resolvedParameters
-    WriteMemOp(if (a < b) 1 else 0, addr)
-  }
-  override def run(resolvedParameters: List[Int]): MemOp = run(resolvedParameters.head, resolvedParameters(1), resolvedParameters(2))
-}
-
-
-
-// if first parameter is equal to second parameter, stores 1 in 3rd parameter
-case object EQUALS extends OpCode {
-  override type Arity[_] = Ternary[_]
-  override val numParams: Int = 3
-  override def run(resolvedParameters: Params): WriteMemOp = {
-    val (a: Int, b, addr: Int) = resolvedParameters
-    WriteMemOp(if (a == b) 1 else 0, addr)
-  }
-  override def run(resolvedParameters: List[Int]): MemOp = run(resolvedParameters.head, resolvedParameters(1), resolvedParameters(2))
-}
-
-
-case object HALT extends OpCode {
-  override type Arity[_] = Nullary[_]
-  override val numParams: Int = 0
-  override def run(resolvedParameters: Params): WriteMemOp = ???
-  override def run(resolvedParameters: List[Int]): MemOp = ???
-}
-
-
-object OpCode {
-
-  def apply(opCode: Int): OpCode = {
     opCode match {
-      case 1 => ADD
-      case 2 => MULT
-      case 3 => INPUT
-      case 4 => OUTPUT
-      case 5 => JUMP_IF_TRUE
-      case 6 => JUMP_IF_FALSE
-      case 7 => LESS_THAN
-      case 8 => EQUALS
+      case 1 => ADD(modes take 3)
+      case 2 => MULT(modes take 3)
+      case 3 => INPUT(modes take 1)
+      case 4 => OUTPUT(modes take 1)
+      case 5 => JUMP_IF_TRUE(modes take 2)
+      case 6 => JUMP_IF_FALSE(modes take 2)
+      case 7 => LESS_THAN(modes take 3)
+      case 8 => EQUALS(modes take 3)
       case 99 => HALT
       case other => throw new IllegalArgumentException(s"unknown opcode $other")
     }

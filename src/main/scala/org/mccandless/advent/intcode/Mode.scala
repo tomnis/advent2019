@@ -1,4 +1,4 @@
-package org.mccandless.advent.intcode2
+package org.mccandless.advent.intcode
 
 // parameter modes
 // an output parameter (written to) will never be in immediate mode
@@ -13,5 +13,7 @@ object Mode {
     case other => throw new IllegalArgumentException(s"unknown mode $other")
   }
 
-  def parse(modes: Int): Seq[Mode] = modes.toString.reverse.toSeq.map(a => Mode(a.toString.toInt)) ++ Seq.fill(10)(Position)
+  def parse(modes: Int): Seq[Mode] = {
+    modes.toString.reverse.toSeq.map(a => Mode(a.toString.toInt)) ++ Seq.fill(10)(Position)
+  }
 }

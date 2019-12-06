@@ -1,4 +1,4 @@
-package org.mccandless.advent.intcode2
+package org.mccandless.advent.intcode
 
 object Oracle {
 
