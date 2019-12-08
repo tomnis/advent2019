@@ -5,6 +5,8 @@ import scala.annotation.tailrec
 import scala.collection.mutable
 
 object Prob6 extends Parser[Orbit] with App{
+  type Sat = String
+  type Cen = String
   // AAA)BBB
 
   val centerOfMass: String = "COM"

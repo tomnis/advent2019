@@ -7,13 +7,34 @@ case class Machine(memory: Array[Int]) {
   var out: Int = 0
   var ip: Int = 0
 
-  @tailrec final def run(): EndState = {
+  @tailrec final def run(inputs: Seq[Int] = Seq.empty): EndState = {
     val op = Op(memory(ip))
 
     op match {
       case HALT => {
         println("HALT\n\n")
         EndState(out, memory.toSeq)
+      }
+      case input @ INPUT(_) => {
+        // if we don't have any inputs for now, return without modifying ip
+        if (inputs.isEmpty) {
+          EndState(out, memory.toSeq, halted = false)
+        }
+        else {
+          val params: Array[Int] = memory.slice(ip + 1, ip + 1 + input.numParams)
+          println(s"$input params=${params.toList} inputs=${inputs.toList}")
+          val resolved: Seq[Int] = resolve(input, params)
+          val effect: Effect = input.run(resolved).asInstanceOf[Write].copy(value = inputs.head)
+          mutate(effect)
+
+          ip += (1 + input.numParams)
+          if (inputs.nonEmpty) {
+            run(inputs.tail)
+          }
+          else {
+            EndState(out, memory.toSeq, halted = false)
+          }
+        }
       }
       case other => {
         val oldIp: Int = ip
@@ -26,7 +47,7 @@ case class Machine(memory: Array[Int]) {
         if (oldIp == ip) {
           ip += (1 + other.numParams)
         }
-        run()
+        run(inputs)
       }
     }
   }
@@ -54,4 +75,4 @@ case class Machine(memory: Array[Int]) {
 }
 
 
-case class EndState(output: Int, memory: Seq[Int])
+case class EndState(output: Int, memory: Seq[Int], halted: Boolean = true)
