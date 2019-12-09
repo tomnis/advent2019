@@ -11,7 +11,7 @@ sealed trait Op {
   def numParams: Int = numInputs + numOutputs
 
   // assumes input params have already been resolved
-  def run(params: Seq[Int]): Effect
+  def run(params: Seq[Long]): Effect
 }
 
 
@@ -35,39 +35,54 @@ trait Binary extends Op {
 
 
 case class ADD(modes: Seq[Mode]) extends Op with Binary {
-  override def run(params: Seq[Int]): Effect = Write(params.head + params(1), params(2))
+  override def run(params: Seq[Long]): Effect = Write(params.head + params(1), params(2))
 }
 
 case class MULT(modes: Seq[Mode]) extends Op with Binary {
-  override def run(params: Seq[Int]): Effect = Write(params.head * params(1), params(2))
+  override def run(params: Seq[Long]): Effect = Write(params.head * params(1), params(2))
 }
 
-case class INPUT(modes: Seq[Mode]) extends Op with Nullary {
-  override def run(params: Seq[Int]): Effect = Write(Oracle.input(), params.head)
+case class INPUT(modes: Seq[Mode]) extends Op {
+  override val numInputs: Int = 0
+  override val numOutputs: Int = 1
+  override def run(params: Seq[Long]): Effect = {
+    println(s"input run: params=$params")
+    Write(Oracle.input(), params.head)
+  }
 }
 
-case class OUTPUT(modes: Seq[Mode]) extends Op with Nullary {
-  override def run(params: Seq[Int]): Effect = Print(params.head)
+case class OUTPUT(modes: Seq[Mode]) extends Op {
+  override val numInputs: Int = 1
+  override val numOutputs: Int = 0
+  override def run(params: Seq[Long]): Effect = Print(params.head)
 }
 
 case class JUMP_IF_TRUE(modes: Seq[Mode]) extends Op {
   override val numInputs: Int = 2
   override val numOutputs: Int = 0
-  override def run(params: Seq[Int]): Effect = if (params.head != 0) Jump(params(1)) else Pure
+  override def run(params: Seq[Long]): Effect = if (params.head != 0) Jump(params(1)) else Pure
 }
 
 case class JUMP_IF_FALSE(modes: Seq[Mode]) extends Op {
   override val numInputs: Int = 2
   override val numOutputs: Int = 0
-  override def run(params: Seq[Int]): Effect = if (params.head == 0) Jump(params(1)) else Pure
+  override def run(params: Seq[Long]): Effect = if (params.head == 0) Jump(params(1)) else Pure
 }
 
 case class LESS_THAN(modes: Seq[Mode]) extends Op with Binary {
-  override def run(params: Seq[Int]): Effect = Write(if (params.head < params(1)) 1 else 0, params(2))
+  override def run(params: Seq[Long]): Effect = Write(if (params.head < params(1)) 1 else 0, params(2))
 }
 
 case class EQUALS(modes: Seq[Mode]) extends Op with Binary {
-  override def run(params: Seq[Int]): Effect = Write(if (params.head == params(1)) 1 else 0, params(2))
+  override def run(params: Seq[Long]): Effect = Write(if (params.head == params(1)) 1 else 0, params(2))
+}
+
+
+case class REL_BASE(modes: Seq[Mode]) extends Op {
+  override val numInputs: Int = 1
+  override val numOutputs: Int = 0
+
+  override def run(params: Seq[Long]): Effect = IncRelBase(params.head)
 }
 
 case object HALT extends Op {
@@ -76,16 +91,16 @@ case object HALT extends Op {
   override val modes: Seq[Mode] = Seq.empty
 
   // TODO separate halt effect?
-  override def run(params: Seq[Int]): Effect = Pure
+  override def run(params: Seq[Long]): Effect = Pure
 }
 
 
 
 object Op {
 
-  def apply(op: Int): Op = {
+  def apply(op: Long): Op = {
     // 2 digit opcode
-    val opCode: Int = op % 100
+    val opCode: Long = op % 100
     val modes: Seq[Mode] = Mode.parse(op / 100)
 
     opCode match {
@@ -97,6 +112,7 @@ object Op {
       case 6 => JUMP_IF_FALSE(modes take 2)
       case 7 => LESS_THAN(modes take 3)
       case 8 => EQUALS(modes take 3)
+      case 9 => REL_BASE(modes take 1)
       case 99 => HALT
       case other => throw new IllegalArgumentException(s"unknown opcode $other")
     }

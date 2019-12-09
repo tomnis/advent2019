@@ -4,13 +4,13 @@ import org.mccandless.advent.intcode.Machine
 
 import scala.collection.mutable
 
-object Prob7 extends Parser[Array[Int]] with App {
+object Prob7 extends Parser[Array[Long]] with App {
 
 
   override val inputFileName = "prob7_input.txt"
 
-  override def parse(line: String): Array[Int] = Prob5.parse(line)
-  val mem: Array[Int] = input().next().clone()
+  override def parse(line: String): Array[Long] = Prob5.parse(line).map(_.toLong)
+  val mem: Array[Long] = input().next().clone()
 
   // 5 amplifiers in series
 
@@ -38,19 +38,19 @@ object Prob7 extends Parser[Array[Int]] with App {
   //
 
 
-  def thrusterSignal(initialMemory: Seq[Int], phaseSettings: (Int, Int, Int, Int, Int)): Int = {
+  def thrusterSignal(initialMemory: Seq[Long], phaseSettings: (Long, Long, Long, Long, Long)): Long = {
 
     val ampA: Amplifier = Amplifier("A", Machine(initialMemory.toArray))
-    val ampAout: Int = ampA.output(Seq(phaseSettings._1, 0))
+    val ampAout: Long = ampA.output(Seq(phaseSettings._1, 0))
 
     val ampB: Amplifier = Amplifier("B", Machine(initialMemory.toArray))
-    val ambBout: Int = ampB.output(Seq(phaseSettings._2, ampAout))
+    val ambBout: Long = ampB.output(Seq(phaseSettings._2, ampAout))
 
     val ampC: Amplifier = Amplifier("C", Machine(initialMemory.toArray))
-    val ambCout: Int = ampC.output(Seq(phaseSettings._3, ambBout))
+    val ambCout: Long = ampC.output(Seq(phaseSettings._3, ambBout))
 
     val ampD: Amplifier = Amplifier("D", Machine(initialMemory.toArray))
-    val ambDout: Int = ampD.output(Seq(phaseSettings._4, ambCout))
+    val ambDout: Long = ampD.output(Seq(phaseSettings._4, ambCout))
 
     val ampE: Amplifier = Amplifier("E", Machine(initialMemory.toArray))
     ampE.output(Seq(phaseSettings._5, ambDout))
@@ -58,7 +58,7 @@ object Prob7 extends Parser[Array[Int]] with App {
 
 
 
-  def maxThrusterSignal(program: Seq[Int]): Int = {
+  def maxThrusterSignal(program: Seq[Long]): Long= {
     Seq(0,1,2,3,4).permutations.map { perm =>
       thrusterSignal(program, (perm.head, perm(1), perm(2), perm(3), perm(4)))
     }.max
@@ -75,7 +75,7 @@ object Prob7 extends Parser[Array[Int]] with App {
 
 
 
-  def thrusterSignalWithFeedbackLoop(program: Seq[Int], phaseSettings: (Int, Int, Int, Int, Int)): Int = {
+  def thrusterSignalWithFeedbackLoop(program: Seq[Long], phaseSettings: (Long, Long, Long, Long, Long)): Long = {
 
     val ampA: Machine = Machine(program.toArray)
     val ampB: Machine = Machine(program.toArray)
@@ -83,11 +83,11 @@ object Prob7 extends Parser[Array[Int]] with App {
     val ampD: Machine = Machine(program.toArray)
     val ampE: Machine = Machine(program.toArray)
 
-    val ampAInput: mutable.Buffer[Int] = mutable.Buffer(phaseSettings._1, 0)
-    val ampBInput: mutable.Buffer[Int] = mutable.Buffer(phaseSettings._2)
-    val ampCInput: mutable.Buffer[Int] = mutable.Buffer(phaseSettings._3)
-    val ampDInput: mutable.Buffer[Int] = mutable.Buffer(phaseSettings._4)
-    val ampEInput: mutable.Buffer[Int] = mutable.Buffer(phaseSettings._5)
+    val ampAInput: mutable.Buffer[Long] = mutable.Buffer(phaseSettings._1, 0)
+    val ampBInput: mutable.Buffer[Long] = mutable.Buffer(phaseSettings._2)
+    val ampCInput: mutable.Buffer[Long] = mutable.Buffer(phaseSettings._3)
+    val ampDInput: mutable.Buffer[Long] = mutable.Buffer(phaseSettings._4)
+    val ampEInput: mutable.Buffer[Long] = mutable.Buffer(phaseSettings._5)
     var halt: Boolean = false
     while (!halt) {
 
@@ -119,13 +119,13 @@ object Prob7 extends Parser[Array[Int]] with App {
 
 
 
-  def maxThrusterSignalWithFeedbackLoop(program: Seq[Int]): Int = {
+  def maxThrusterSignalWithFeedbackLoop(program: Seq[Long]): Long = {
     // amplifiers need totally different phase settings, ints from 5-9
     Seq(5,6,7,8,9).permutations.map { perm =>
       thrusterSignalWithFeedbackLoop(program, (perm.head, perm(1), perm(2), perm(3), perm(4)))
     }.max
   }
-  val ex: Int = 139629729
+  val ex: Long = 139629729
   require(maxThrusterSignalWithFeedbackLoop(Seq(3,26,1001,26,-4,26,3,27,1002,27,2,27,1,27,26,27,4,27,1001,28,-1,28,1005,28,6,99,0,0,5)) == ex)
   require(maxThrusterSignalWithFeedbackLoop(Seq(3,52,1001,52,-5,52,3,53,1,52,56,54,1007,54,5,55,1005,55,26,1001,54,-5,54,1105,1,12,1,53,54,53,1008,54,0,55,1001,55,1,55,2,53,55,53,4,53,1001,56,-1,56,1005,56,6,99,0,0,0,0,10)) == 18216)
   println(maxThrusterSignalWithFeedbackLoop(this.mem.clone().toSeq))
@@ -138,5 +138,5 @@ object Prob7 extends Parser[Array[Int]] with App {
 case class Amplifier(id: String, machine: Machine) {
 
 
-  def output(inputs: Seq[Int]): Int = machine.run(inputs).output
+  def output(inputs: Seq[Long]): Long = machine.run(inputs).output
 }

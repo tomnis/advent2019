@@ -2,12 +2,12 @@ package org.mccandless.advent
 
 import org.mccandless.advent.intcode.Machine
 
-object Prob5 extends Parser[Array[Int]] with App {
+object Prob5 extends Parser[Array[Long]] with App {
 
   override val inputFileName = "prob5_input.txt"
-  override def parse(line: String): Array[Int] = line.split(",").map(_.toInt)
+  override def parse(line: String): Array[Long] = line.split(",").map(_.toLong)
 
-  val mem: Array[Int] = input().next().clone()
+  val mem: Array[Long] = input().next().clone()
 
   require(Machine(Array(1002,4,3,4,33)).run().memory == Seq(1002,4,3,4,99))
   // input eq 8 (position)
