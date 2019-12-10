@@ -13,19 +13,16 @@ case class Point(x: Long, y: Long) {
 
 
   def rangeTo(other: Point): Seq[Point] = {
-    val dx: Long = other.x - this.x
-    val dy: Long = other.y - this.y
-
-    val g: Long = abs(gcd(dx, dy))
-    val xStep = dx / g
-    val yStep = dy / g
+    val delta: Point = other - this
+    val g: Long = abs(gcd(delta.x, delta.y))
+    val step: Point = Point(delta.x / g, delta.y / g)
 
     val points: mutable.Buffer[Point] = mutable.Buffer.empty
-    var curPoint: Point = this.copy()
+    var curPoint: Point = this
 
     while (curPoint != other) {
       points += curPoint
-      curPoint = curPoint.copy(x = curPoint.x + xStep, y = curPoint.y + yStep)
+      curPoint += step
     }
     points += other
     points.toSeq
@@ -33,6 +30,7 @@ case class Point(x: Long, y: Long) {
   }
 
   def -(other: Point): Point = Point(this.x - other.x, this.y - other.y)
+  def +(other: Point): Point = Point(this.x + other.x, this.y + other.y)
 
 
   def angle(other: Point): Double = {
