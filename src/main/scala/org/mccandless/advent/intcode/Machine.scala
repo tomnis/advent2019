@@ -50,7 +50,10 @@ case class Machine(memory: Array[Long]) {
         if (oldIp == ip) {
           ip += (1 + other.numParams)
         }
-        run(inputs)
+        op match {
+          case OUTPUT(_) => EndState(out, halted = false, memory.toSeq)
+          case _ => run(inputs)
+        }
       }
     }
   }
