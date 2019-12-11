@@ -41,7 +41,7 @@ object Prob11 extends App with ParsesIntCode {
   // how many panels are painted at least once?
 
   def part1(program: Program): Hull = {
-    val m: Machine = Machine(program.toArray)
+    val m: Machine = Machine(program)
 
     val hull: mutable.Map[Point, PanelColor] = mutable.Map.empty.withDefaultValue(Black) ++ Map(Point(0, 0) -> Black)
     var facingDirection: Cardinal = North

@@ -41,19 +41,19 @@ object Prob7 extends Parser[Array[Long]] with App {
 
   def thrusterSignal(initialMemory: Seq[Long], phaseSettings: (Long, Long, Long, Long, Long)): Long = {
 
-    val ampA: Amplifier = Amplifier("A", Machine(initialMemory.toArray))
+    val ampA: Amplifier = Amplifier("A", Machine(initialMemory))
     val ampAout: Long = ampA.output(Seq(phaseSettings._1, 0))
 
-    val ampB: Amplifier = Amplifier("B", Machine(initialMemory.toArray))
+    val ampB: Amplifier = Amplifier("B", Machine(initialMemory))
     val ambBout: Long = ampB.output(Seq(phaseSettings._2, ampAout))
 
-    val ampC: Amplifier = Amplifier("C", Machine(initialMemory.toArray))
+    val ampC: Amplifier = Amplifier("C", Machine(initialMemory))
     val ambCout: Long = ampC.output(Seq(phaseSettings._3, ambBout))
 
-    val ampD: Amplifier = Amplifier("D", Machine(initialMemory.toArray))
+    val ampD: Amplifier = Amplifier("D", Machine(initialMemory))
     val ambDout: Long = ampD.output(Seq(phaseSettings._4, ambCout))
 
-    val ampE: Amplifier = Amplifier("E", Machine(initialMemory.toArray))
+    val ampE: Amplifier = Amplifier("E", Machine(initialMemory))
     ampE.output(Seq(phaseSettings._5, ambDout))
   }
 
@@ -78,11 +78,11 @@ object Prob7 extends Parser[Array[Long]] with App {
 
   def thrusterSignalWithFeedbackLoop(program: Seq[Long], phaseSettings: (Long, Long, Long, Long, Long)): Long = {
 
-    val ampA: Machine = Machine(program.toArray)
-    val ampB: Machine = Machine(program.toArray)
-    val ampC: Machine = Machine(program.toArray)
-    val ampD: Machine = Machine(program.toArray)
-    val ampE: Machine = Machine(program.toArray)
+    val ampA: Machine = Machine(program)
+    val ampB: Machine = Machine(program)
+    val ampC: Machine = Machine(program)
+    val ampD: Machine = Machine(program)
+    val ampE: Machine = Machine(program)
 
     val ampAInput: mutable.Buffer[Long] = mutable.Buffer(phaseSettings._1, 0)
     val ampBInput: mutable.Buffer[Long] = mutable.Buffer(phaseSettings._2)

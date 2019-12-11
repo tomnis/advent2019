@@ -35,11 +35,11 @@ trait Binary extends Op {
 
 
 case class ADD(modes: Seq[Mode]) extends Op with Binary {
-  override def run(params: Seq[Long]): Effect = Write(params.head + params(1), params(2))
+  override def run(params: Seq[Long]): Effect = Store(params.head + params(1), params(2))
 }
 
 case class MULT(modes: Seq[Mode]) extends Op with Binary {
-  override def run(params: Seq[Long]): Effect = Write(params.head * params(1), params(2))
+  override def run(params: Seq[Long]): Effect = Store(params.head * params(1), params(2))
 }
 
 case class INPUT(modes: Seq[Mode], maybeIn: Option[Long] = None) extends Op {
@@ -47,7 +47,7 @@ case class INPUT(modes: Seq[Mode], maybeIn: Option[Long] = None) extends Op {
   override val numInputs: Int = 0
   override val numOutputs: Int = 1
   // input must have been provided at this time
-  override def run(params: Seq[Long]): Write = Write(maybeIn.get, params.head)
+  override def run(params: Seq[Long]): Store = Store(maybeIn.get, params.head)
 }
 
 case class OUTPUT(modes: Seq[Mode]) extends Op {
@@ -69,11 +69,11 @@ case class JUMP_IF_FALSE(modes: Seq[Mode]) extends Op {
 }
 
 case class LESS_THAN(modes: Seq[Mode]) extends Op with Binary {
-  override def run(params: Seq[Long]): Effect = Write(if (params.head < params(1)) 1 else 0, params(2))
+  override def run(params: Seq[Long]): Effect = Store(if (params.head < params(1)) 1 else 0, params(2))
 }
 
 case class EQUALS(modes: Seq[Mode]) extends Op with Binary {
-  override def run(params: Seq[Long]): Effect = Write(if (params.head == params(1)) 1 else 0, params(2))
+  override def run(params: Seq[Long]): Effect = Store(if (params.head == params(1)) 1 else 0, params(2))
 }
 
 

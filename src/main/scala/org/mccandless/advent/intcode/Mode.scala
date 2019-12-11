@@ -15,6 +15,7 @@ object Mode {
     case other => throw new IllegalArgumentException(s"unknown mode $other")
   }
 
+  // TODO ugly filling in of padding Position modes
   def parse(modes: Long): Seq[Mode] = {
     modes.toString.reverse.toSeq.map(a => Mode(a.toString.toLong)) ++ Seq.fill(10)(Position)
   }
