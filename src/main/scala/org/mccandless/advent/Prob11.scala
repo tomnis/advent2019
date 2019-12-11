@@ -2,100 +2,72 @@ package org.mccandless.advent
 
 import org.mccandless.advent.Prob11Types._
 import org.mccandless.advent.geometry.Point
-import org.mccandless.advent.intcode.Machine
-import org.mccandless.advent.intcode.Types.Program
+import org.mccandless.advent.intcode.{Halted, Machine, Paused}
+import org.mccandless.advent.intcode.Types.{Program, ParsesIntCode}
+import org.mccandless.advent.util.cardinal._
 
 import scala.collection.mutable
 
-object Prob11 extends Parser[Program] with App {
+object Prob11 extends App with ParsesIntCode {
   override val inputFileName = "prob11_input.txt"
-
-  override def parse(line: String): Program = line.split(",").toSeq.map(_.toLong)
-
-
 
   // hull painting robot
   // all panels currently black
-
   // program uses input instructiosn for camera: 0 if black, 1 if white
-
-
   // output a value indicating direction for robot to turn 0 left, 1 riht
-
-
   // after turning, move forward 1 panel
-
-
-  def getNextPosition(point: Point, direction: Direction): Point = direction match {
-    case Up => point.copy(y = point.y - 1)
-    case Down => point.copy(y = point.y + 1)
-    case Left => point.copy(x = point.x - 1)
-    case Right => point.copy(x = point.x + 1)
-  }
   // starts facing up
 
+  def getNextPosition(point: Point, dir: Cardinal): Point = dir match {
+    case North => point.copy(y = point.y - 1)
+    case South => point.copy(y = point.y + 1)
+    case West => point.copy(x = point.x - 1)
+    case East => point.copy(x = point.x + 1)
+  }
 
-  def getNextDirection(dir: Direction, turn: Turn): Direction = {
-    (dir, turn) match {
-      case (Up, TurnLeft) => Left
-      case (Up, TurnRight) => Right
-      case (Down, TurnLeft) => Right
-      case (Down, TurnRight) => Left
-      case (Left, TurnLeft) => Down
-      case (Left, TurnRight) => Up
-      case (Right, TurnLeft) => Up
-      case (Right, TurnRight) => Down
-    }
+
+  def getNextDirection(dir: Cardinal, rot: Rotate): Cardinal = (dir, rot) match {
+    case (North, Left90) => West
+    case (North, Right90) => East
+    case (South, Left90) => East
+    case (South, Right90) => West
+    case (West, Left90) => South
+    case (West, Right90) => North
+    case (East, Left90) => North
+    case (East, Right90) => South
   }
 
 
   // how many panels are painted at least once?
 
   def part1(program: Program): Hull = {
-    val hull: mutable.Map[Point, PanelColor] = mutable.Map.empty.withDefaultValue(Black) ++ Map(Point(0, 0) -> Black)
     val m: Machine = Machine(program.toArray)
 
-    var facingDirection: Direction = Up
-
+    val hull: mutable.Map[Point, PanelColor] = mutable.Map.empty.withDefaultValue(Black) ++ Map(Point(0, 0) -> Black)
+    var facingDirection: Cardinal = North
     var curPosition: Point = Point(0,0)
-
-
     var halted = false
 
-    var count: Int = 0
-
     while (!halted) {
-
-
       // run with input of current color
       val currentColor: PanelColor = hull(curPosition)
-
       // output will be a value to paint the panel
       val newColor: Long = m.run(Seq(currentColor.rep)).output
-
       // next output will be a value to turn
       val turnEndState = m.run()
-      val turn = turnEndState.output
 
-      println(s"new color: ${PanelColor(newColor)},   turn: ${Turn(turn)}")
-
-
-      // paint the color
-      if (hull(curPosition) != PanelColor(newColor)) {
-        count += 1
+      turnEndState match {
+        case Paused(output) =>
+          // paint the color
+          hull += (curPosition -> PanelColor(newColor))
+          // turn
+          facingDirection = getNextDirection(facingDirection, Rotate(output))
+          // update position
+          curPosition = getNextPosition(curPosition, facingDirection)
+        case Halted(_) =>
+          halted = true
       }
-      hull += (curPosition -> PanelColor(newColor))
-
-      // turn
-      facingDirection = getNextDirection(facingDirection, Turn(turn))
-
-      // update position
-      curPosition = getNextPosition(curPosition, facingDirection)
-
-      //
-      halted = turnEndState.halted
     }
-
 
     hull.toMap
   }
@@ -109,7 +81,6 @@ object Prob11 extends Parser[Program] with App {
 
 
   def part2(hull: Hull): Unit = {
-
     val withDefault = hull.withDefaultValue(Black)
 
     val minx = withDefault.keys.minBy(_.x).x
@@ -117,22 +88,16 @@ object Prob11 extends Parser[Program] with App {
     val miny = withDefault.keys.minBy(_.y).y
     val maxy = withDefault.keys.maxBy(_.y).y
 
-
     miny.to(maxy).foreach { y =>
-
       minx.to(maxx).foreach { x =>
-
         val pixel = withDefault(Point(x, y)) match {
           case Black => " "
           case White => "+"
         }
         print(pixel)
       }
-
       println()
     }
-
-
   }
 
 
@@ -146,9 +111,6 @@ object Prob11 extends Parser[Program] with App {
 object Prob11Types {
 
   type Hull = Map[Point, PanelColor]
-
-  val BLACK = 0
-  val WHITE = 1
 
   sealed trait PanelColor {
     val rep: Long
@@ -166,27 +128,17 @@ object Prob11Types {
       case 1 => White
       case _ => ???
     }
-
   }
 
 
+  sealed trait Rotate
+  case object Left90 extends Rotate
+  case object Right90 extends Rotate
 
-
-
-  sealed trait Direction
-  case object Up extends Direction
-  case object Down extends Direction
-  case object Left extends Direction
-  case object Right extends Direction
-
-  sealed trait Turn
-  case object TurnLeft extends Turn
-  case object TurnRight extends Turn
-
-  object Turn {
-    def apply(t: Long): Turn = t match {
-      case 0 => TurnLeft
-      case 1 => TurnRight
+  object Rotate {
+    def apply(t: Long): Rotate = t match {
+      case 0 => Left90
+      case 1 => Right90
       case _ => ???
     }
   }

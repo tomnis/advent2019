@@ -1,5 +1,7 @@
 package org.mccandless.advent
 
+import org.mccandless.advent.util.Parser
+
 object Prob8 extends Parser[Seq[Int]] with App {
   override val inputFileName = "prob8_input.txt"
   override def parse(line: String): Seq[Int] = line.toCharArray.toSeq.map(_.toString.toInt)

@@ -1,6 +1,7 @@
 package org.mccandless.advent
 
 import org.mccandless.advent.intcode.Machine
+import org.mccandless.advent.util.Parser
 
 object Prob5 extends Parser[Array[Long]] with App {
 
@@ -9,7 +10,6 @@ object Prob5 extends Parser[Array[Long]] with App {
 
   val mem: Array[Long] = input().next().clone()
 
-  require(Machine(Array(1002,4,3,4,33)).run().memory == Seq(1002,4,3,4,99))
   // input eq 8 (position)
   require(Machine(Array(3,9,8,9,10,9,4,9,99,-1,8)).run().output == 0)
   // input lt 8 (position)

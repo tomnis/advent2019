@@ -16,6 +16,6 @@ object Mode {
   }
 
   def parse(modes: Long): Seq[Mode] = {
-    modes.toString.reverse.toSeq.map(a => Mode(a.toString.toInt)) ++ Seq.fill(10)(Position)
+    modes.toString.reverse.toSeq.map(a => Mode(a.toString.toLong)) ++ Seq.fill(10)(Position)
   }
 }

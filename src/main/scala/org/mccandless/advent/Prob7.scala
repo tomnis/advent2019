@@ -1,6 +1,7 @@
 package org.mccandless.advent
 
-import org.mccandless.advent.intcode.Machine
+import org.mccandless.advent.intcode.{Halted, Machine}
+import org.mccandless.advent.util.Parser
 
 import scala.collection.mutable
 
@@ -111,7 +112,7 @@ object Prob7 extends Parser[Array[Long]] with App {
       ampEInput.clear()
       ampAInput += eout.output
 
-      halt = eout.halted
+      halt = eout.isInstanceOf[Halted]
     }
 
     ampAInput.head

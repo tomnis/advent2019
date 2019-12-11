@@ -1,5 +1,7 @@
 package org.mccandless.advent
 
+import org.mccandless.advent.util.Parser
+
 /**
  *
  * Created by tdm on 2019-12-01.

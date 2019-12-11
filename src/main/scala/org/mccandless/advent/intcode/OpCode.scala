@@ -42,13 +42,12 @@ case class MULT(modes: Seq[Mode]) extends Op with Binary {
   override def run(params: Seq[Long]): Effect = Write(params.head * params(1), params(2))
 }
 
-case class INPUT(modes: Seq[Mode]) extends Op {
+case class INPUT(modes: Seq[Mode], maybeIn: Option[Long] = None) extends Op {
+  def this(modes: Seq[Mode], in: Long) = this(modes, Option(in))
   override val numInputs: Int = 0
   override val numOutputs: Int = 1
-  override def run(params: Seq[Long]): Effect = {
-    println(s"input run: params=$params")
-    Write(Oracle.input(), params.head)
-  }
+  // input must have been provided at this time
+  override def run(params: Seq[Long]): Write = Write(maybeIn.get, params.head)
 }
 
 case class OUTPUT(modes: Seq[Mode]) extends Op {

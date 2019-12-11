@@ -1,4 +1,4 @@
-package org.mccandless.advent
+package org.mccandless.advent.util
 
 import scala.io.{BufferedSource, Source}
 

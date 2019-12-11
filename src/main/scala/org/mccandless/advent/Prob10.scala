@@ -2,6 +2,7 @@ package org.mccandless.advent
 
 import Prob10Types._
 import org.mccandless.advent.geometry.Point
+import org.mccandless.advent.util.Parser
 
 import scala.collection.mutable
 

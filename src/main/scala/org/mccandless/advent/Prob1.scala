@@ -1,5 +1,7 @@
 package org.mccandless.advent
 
+import org.mccandless.advent.util.Parser
+
 import scala.annotation.tailrec
 
 /**

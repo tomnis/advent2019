@@ -2,6 +2,7 @@ package org.mccandless.advent
 
 import org.mccandless.advent.geometry.Point
 import org.mccandless.advent.geometry.Dist.manhattanDistance
+import org.mccandless.advent.util.Parser
 
 import scala.collection.mutable
 import scala.math.abs

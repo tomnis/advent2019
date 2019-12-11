@@ -2,6 +2,7 @@ package org.mccandless.advent
 
 import org.mccandless.advent.intcode.Machine
 import org.mccandless.advent.intcode.Types.Program
+import org.mccandless.advent.util.Parser
 
 object Prob9 extends Parser[Program] with App {
   override val inputFileName = "prob9_input.txt"
