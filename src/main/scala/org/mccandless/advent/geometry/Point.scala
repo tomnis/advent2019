@@ -1,5 +1,6 @@
 package org.mccandless.advent.geometry
 
+import org.mccandless.advent.ntheory.NumberTheory.gcd
 import scala.collection.mutable
 
 import scala.math.{atan2, abs}
@@ -9,7 +10,6 @@ import scala.math.{atan2, abs}
  * Created by tdm on 2019-12-02.
  */
 case class Point(x: Long, y: Long) {
-  import Point._
 
 
   def rangeTo(other: Point): Seq[Point] = {
@@ -37,12 +37,4 @@ case class Point(x: Long, y: Long) {
     val delta: Point = other - this
     atan2(delta.x, delta.y)
   }
-}
-
-
-object Point {
-
-  def gcd(a: Long, b: Long): Long = if (a == 0) b else gcd(b % a, a)
-  require(gcd(366, 60) == 6)
-  require(gcd(60, 366) == 6)
 }
