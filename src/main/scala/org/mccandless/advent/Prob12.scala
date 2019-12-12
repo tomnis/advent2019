@@ -27,6 +27,8 @@ object Prob12 extends Parser[Moon] with App {
   require(parse("<x=4, y=-17, z=-12>") == Moon(Point3(4, -17, -12)))
 
 
+  // input: position of each moon
+  // each moon has 3d position and 3d velocity (starts at 0)
   val moons: Seq[Moon] = this.input().toSeq
 
 
@@ -85,30 +87,16 @@ object Prob12 extends Parser[Moon] with App {
 
 
 
-  def applyVelocity(moons: Seq[Moon]): Seq[Moon] = {
-    moons.map(m => m.copy(p = m.p + m.v))
-  }
+  def applyVelocity(moons: Seq[Moon]): Seq[Moon] = moons.map(m => m.copy(p = m.p + m.v))
 
 
-
-  // input: position of each moon
-
-  // each moon has 3d position and 3d velocity (starts at 0)
+  def totalEnergy(moons: Seq[Moon]): Long = moons.map(_.totalEnergy).sum
 
   // simulate motion of moon in timesteps
-
-
-  def totalEnergy(moons: Seq[Moon]): Long = {
-    moons.map(_.totalEnergy).sum
-  }
-
   // within each timestep
   //   update each velocity by applying gravity
   //   update position by applying velocity
-
-
   def part1(moons: Seq[Moon]): Long = {
-
     var currentMoons: Seq[Moon] = moons
 
     val timeStepLimit: Int = 1000
@@ -127,23 +115,19 @@ object Prob12 extends Parser[Moon] with App {
     currentMoons.foreach(println)
     println("\n")
 
-
-
     totalEnergy(currentMoons)
   }
-
-
-
 
 
   def statex(moons: Seq[Moon]): Seq[Long] = moons.flatMap(m => Seq(m.p.x, m.v.x))
   def statey(moons: Seq[Moon]): Seq[Long] = moons.flatMap(m => Seq(m.p.y, m.v.y))
   def statez(moons: Seq[Moon]): Seq[Long] = moons.flatMap(m => Seq(m.p.z, m.v.z))
 
+  // period along a single dimension
   def period(moons: Seq[Moon], state: Seq[Moon] => Seq[Long]): Long = {
-    var currentMoons: Seq[Moon] = moons
     val seenStates: mutable.Set[Seq[Long]] = mutable.Set(state(moons))
 
+    var currentMoons: Seq[Moon] = moons
     var halt = false
     var stepcounter: Long = 0
 
@@ -166,8 +150,6 @@ object Prob12 extends Parser[Moon] with App {
   }
 
 
-
-
   // do the moons ever return to a previous state?
   // how many steps must occur before positions and velocities match a previous point in time
   def part2(moons: Seq[Moon]): Long = {
@@ -180,7 +162,6 @@ object Prob12 extends Parser[Moon] with App {
     lcm(xPeriod, yPeriod, zPeriod)
   }
 
-
   println(part1(moons))
   println(part2(moons))
 }
@@ -188,13 +169,7 @@ object Prob12 extends Parser[Moon] with App {
 
 
 
-
-
-
-
-
 object Prob12Types {
-
 
   case class Point3(x: Long, y: Long, z: Long) {
     def +(other: Velocity): Point3 = Point3(this.x + other.x, this.y + other.y, this.z + other.z)
@@ -205,17 +180,13 @@ object Prob12Types {
     def +(other: Velocity): Velocity = Velocity(this.x + other.x, this.y + other.y, this.z + other.z)
     def kineticEnergy: Long = abs(x) + abs(y) + abs(z)
   }
+
   object Velocity {
     def zero: Velocity = Velocity(0, 0, 0)
   }
 
-
   case class Moon(p: Point3, v: Velocity = Velocity.zero) {
-
     // potential energy * kinetic energy
-    def totalEnergy: Long = {
-      p.potentialEnergy * v.kineticEnergy
-    }
+    def totalEnergy: Long = p.potentialEnergy * v.kineticEnergy
   }
-
 }
