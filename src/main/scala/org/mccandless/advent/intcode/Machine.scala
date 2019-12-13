@@ -8,6 +8,8 @@ case class Machine(program: Seq[Long]) {
   var out: Long = 0
   var ip: Long = 0
   var relBase: Long = 0
+  var awaitingInput: Boolean = false
+  var halted: Boolean = false
   val mem: mutable.Map[Long, Long] = mutable.Map.empty.withDefaultValue(0L) ++ program.zipWithIndex.map(a => (a._2.toLong, a._1)).toMap
 
   @tailrec final def run(inputs: Seq[Long] = Seq.empty): MachineState = {
@@ -17,7 +19,9 @@ case class Machine(program: Seq[Long]) {
         halt
       // we dont have any input for now, pause
       case INPUT(_, _) if inputs.isEmpty =>
-        pause
+        awaitingInput = true
+//        println("awaiting input")
+        AwaitingInput(out)
       case input @ INPUT(_, _) =>
         process(input.copy(maybeIn = inputs.headOption))
         run(inputs.tail)
@@ -33,10 +37,10 @@ case class Machine(program: Seq[Long]) {
 
   def process(op: Op): Effect = {
     val params: Seq[Long] = (ip + 1).until(ip + 1 + op.numParams).map(mem(_))
-    println(s"$op ${params.toList}")
+//    println(s"$op ${params.toList}")
     val resolved: Seq[Long] = resolve(op, params)
     val effect: Effect = op.run(resolved)
-    println(s"effect: $effect")
+//    println(s"effect: $effect")
     mutate(effect, 1 + op.numParams)
     effect
   }
@@ -46,6 +50,7 @@ case class Machine(program: Seq[Long]) {
 
   def halt: MachineState = {
     println("HALT\n\n")
+    halted = true
     Halted(out)
   }
 
@@ -95,5 +100,6 @@ case class Machine(program: Seq[Long]) {
 sealed trait MachineState {
   val output: Long
 }
+case class AwaitingInput(output: Long) extends MachineState
 case class Paused(output: Long) extends MachineState
 case class Halted(output: Long) extends MachineState
