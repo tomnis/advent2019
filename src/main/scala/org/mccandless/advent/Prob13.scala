@@ -2,7 +2,7 @@ package org.mccandless.advent
 
 import org.mccandless.advent.Prob13Types.{Ball, Block, Empty, JoystickTilt, Left, Neutral, Paddle, Right, Tile}
 import org.mccandless.advent.geometry.Point
-import org.mccandless.advent.intcode.{AwaitingInput, Halted, Machine, MachineState, Paused}
+import org.mccandless.advent.intcode.{Halted, Machine}
 import org.mccandless.advent.intcode.Types.{ParsesIntCode, Program}
 
 import scala.collection.mutable
@@ -37,7 +37,7 @@ object Prob13 extends ParsesIntCode with App {
   }
 
   // start the game. how many block tiles?
-  def part1(program: Program): Long = {
+  def part1(program: Program): Map[Point, Tile] = {
     val m = Machine(program)
     val screen: mutable.Map[Point, Tile] = mutable.Map.empty
 
@@ -53,28 +53,35 @@ object Prob13 extends ParsesIntCode with App {
       halted = tileState.isInstanceOf[Halted]
     }
 
-//    render(screen.toMap)
     screen.count(_._2 == Block)
+    screen.toMap
   }
 
 //  println(part1(this.input().next()))
 
-  def getBall(screen: Map[Point, Tile]): Point = {
+  def getBall(screen: Map[Point, Tile]): Option[Point] = {
     val x = screen.filter(_._2 == Ball)
-    require(x.size == 1)
-    screen.filter(_._2 == Ball).head._1
+    require(x.size < 2)
+    screen.find(_._2 == Ball).map(_._1)
   }
 
-  def getPaddle(screen: Map[Point, Tile]): Point = {
+  def getPaddle(screen: Map[Point, Tile]): Option[Point] = {
     val x = screen.filter(_._2 == Paddle)
-    require(x.size == 1)
-    screen.filter(_._2 == Paddle).head._1
+    require(x.size < 2)
+    screen.find(_._2 == Paddle).map(_._1)
   }
 
-  def getInput(ballX: Point, paddleX: Point): JoystickTilt = {
-    if (ballX.x < paddleX.x) Left
-    else if (ballX.x > paddleX.x) Right
-    else Neutral
+  def getInput(ballX: Option[Point], paddleX: Option[Point]): JoystickTilt = {
+    val maybeinput = for {
+      ball <- ballX
+      paddle <- paddleX
+    } yield {
+      if (ball.x < paddle.x) Left
+      else if (ball.x > paddle.x) Right
+      else Neutral
+    }
+
+    maybeinput.getOrElse(Neutral)
   }
 
 
@@ -86,54 +93,27 @@ object Prob13 extends ParsesIntCode with App {
     var input: Option[Long] = None
     var gameDone = false
     var score = 0L
-    val screen: mutable.Map[Point, Tile] = mutable.Map.empty
+    val screen: mutable.Map[Point, Tile] = mutable.Map.empty ++ part1(program)
     while(!gameDone) {
 
-      val (screenDiff, s) = draw(m, input)
-      if (!m.halted) {
-        screen ++= screenDiff
-        score = s
-        val ballPos = this.getBall(screen.toMap)
-        val paddlePos = this.getPaddle(screen.toMap)
-        val tilt = this.getInput(ballPos, paddlePos)
-              render(screen.toMap,score)
-        Thread.sleep(1000)
-        println(s"ballPos: $ballPos")
-        println(s"paddlePos: $paddlePos")
-        println(s"joystick: $tilt")
-        input = Option(tilt.rep)
-      }
-
-      gameDone = m.halted
-    }
-
-
-    score
-  }
-
-
-
-  def draw(m: Machine, input: Option[Long] = None): (Map[Point, Tile], Long) = {
-
-    val screen: mutable.Map[Point, Tile] = mutable.Map.empty
-    var score = 0L
-    var doneDrawing = false
-    while (!doneDrawing && !m.halted) {
+      val ballPos = getBall(screen.toMap)
+      val paddlePos = getPaddle(screen.toMap)
+      input = Option(getInput(ballPos, paddlePos).rep)
       val x = m.run(input.toSeq).output
       val y = m.run().output
       val tileState = m.run()
       if (x == -1 && y == 0) {
         score = tileState.output
-        println(s"draw: set score $score. should be done drawing?")
-        doneDrawing = true // ??
       }
-      else {
-        val tile = tileState.output
-        screen += (Point(x, y) -> Tile(tile))
+      else if (!m.halted) {
+        screen += (Point(x, y) -> Tile(tileState.output))
       }
+//      render(screen.toMap, score)
+//      Thread.sleep(20)
+      gameDone = m.halted
     }
 
-    (screen.toMap, score)
+    score
   }
 
   println(part2(this.input().next()))
