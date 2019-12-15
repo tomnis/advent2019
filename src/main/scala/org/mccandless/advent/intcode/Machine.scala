@@ -8,10 +8,21 @@ case class Machine(program: Seq[Long]) {
   var out: Long = 0
   var ip: Long = 0
   var relBase: Long = 0
-  var awaitingInput: Boolean = false
   var halted: Boolean = false
   val mem: mutable.Map[Long, Long] = mutable.Map.empty.withDefaultValue(0L) ++ program.zipWithIndex.map(a => (a._2.toLong, a._1)).toMap
 
+
+  def snapshot(): Machine = {
+    val m = this.copy()
+    m.out = this.out
+    m.ip = this.ip
+    m.relBase = this.relBase
+    m.halted = this.halted
+    m.mem ++= this.mem.clone()
+    m
+  }
+
+  final def run(input: Long): MachineState = run(Seq(input))
   @tailrec final def run(inputs: Seq[Long] = Seq.empty): MachineState = {
     val op: Op = Op(mem(ip))
     op match {
@@ -19,9 +30,7 @@ case class Machine(program: Seq[Long]) {
         halt
       // we dont have any input for now, pause
       case INPUT(_, _) if inputs.isEmpty =>
-        awaitingInput = true
-//        println("awaiting input")
-        AwaitingInput(out)
+        pause
       case input @ INPUT(_, _) =>
         process(input.copy(maybeIn = inputs.headOption))
         run(inputs.tail)
@@ -100,6 +109,5 @@ case class Machine(program: Seq[Long]) {
 sealed trait MachineState {
   val output: Long
 }
-case class AwaitingInput(output: Long) extends MachineState
 case class Paused(output: Long) extends MachineState
 case class Halted(output: Long) extends MachineState

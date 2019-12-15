@@ -22,6 +22,6 @@ object Prob9 extends Parser[Program] with App {
   require(Machine(sample3.toArray ++ Array.fill(10000)(0L)).run().output == 1125899906842624L)
 
   // TODO hacky memory adjustment
-  Machine(mem.toArray ++ Array.fill(2000)(0L)).run(Seq(1))
-  Machine(mem.toArray ++ Array.fill(2000)(0L)).run(Seq(2))
+  Machine(mem.toArray ++ Array.fill(2000)(0L)).run(1)
+  Machine(mem.toArray ++ Array.fill(2000)(0L)).run(2)
 }
