@@ -42,11 +42,9 @@ object Prob16 extends Parser[Seq[Long]] with App {
 
       //      println(s"input length: $l, appliedPatternLength ${appliedPattern.length}")
       // multiply
-      var r: Long = 0L
       require(appliedPattern.length >= input.length)
-      for (i <- 0 until input.length) {
-        val x: Long = input(i) * appliedPattern(i)
-        r = r + (x % 10)
+      val r: Long = input.zip(appliedPattern).foldLeft(0L) { case (a, (in, pat)) =>
+        a + ((in * pat) % 10)
       }
       // Then, only the ones digit is kept: 38 becomes 8, -17 becomes 7, and so on
       r.abs % 10
@@ -56,26 +54,6 @@ object Prob16 extends Parser[Seq[Long]] with App {
   require(fftPhase(Seq(4,8,2,2,6,1,5,8)) == Seq(3,4,0,4,0,4,3,8))
   require(fftPhase(Seq(3,4,0,4,0,4,3,8)) == Seq(0,3,4,1,5,5,1,8))
   require(fftPhase(Seq(0,3,4,1,5,5,1,8)) == Seq(0,1,0,2,9,4,9,8))
-
-
-  def suffixSums(ns: Seq[Long]): Seq[Long] = {
-    val rev = ns.reverse
-
-    var sum: Long = 0
-    rev.map{ i =>
-      sum += i
-      sum
-    }.reverse
-  }
-  require(suffixSums(Seq(1,2,3,4)) == Seq(10,9,7,4))
-
-  def fftPhaseOpt(input: Seq[Long]): Seq[Long] = {
-    val x = input.reverse
-    x.foreach(println)
-    Seq.empty
-  }
-  fftPhaseOpt(Seq(1,2,3,4))
-
 
 
   def fft(input: Seq[Long], phases: Int): Seq[Long] = {
@@ -106,14 +84,29 @@ object Prob16 extends Parser[Seq[Long]] with App {
 
 
   def part2(input: Seq[Long]): String = {
+    val phases: Int = 100
     // first seven digits of your initial input signal also represent the message offset
     val offset: Int = input.take(7).mkString("").toInt
     println(s"starting part2, offset=$offset")
     val repeat: Int = 10000
-    val realInput: Seq[Long] = Seq.fill(repeat)(input).flatten
+    val realInput: Array[Long] = Array.fill(repeat)(input).flatten
 
-    val result = fft(realInput, 100)
-    result.slice(offset, offset + 8).mkString("")
+    require(realInput.length % 2 == 0)
+    require(offset >= realInput.length / 2)
+
+    1 to phases foreach { phase =>
+      var sum: Long = 0
+
+      (realInput.length - 1) to offset by -1 foreach { idx =>
+        sum += realInput(idx)
+        sum = sum % 10
+        realInput(idx) = sum
+      }
+
+      println(s"completed phase $phase")
+    }
+
+    realInput.slice(offset, offset + 8).mkString("")
   }
 
   println(part2(this.input().next()))
