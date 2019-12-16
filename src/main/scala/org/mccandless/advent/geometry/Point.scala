@@ -11,6 +11,8 @@ import scala.math.{atan2, abs}
  */
 case class Point(x: Long, y: Long) {
 
+  override def toString: String = (x, y).toString
+
 
   def rangeTo(other: Point): Seq[Point] = {
     val delta: Point = other - this

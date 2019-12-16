@@ -13,13 +13,16 @@ case class Machine(program: Seq[Long]) {
 
 
   def snapshot(): Machine = {
-    val m = this.copy()
-    m.out = this.out
-    m.ip = this.ip
-    m.relBase = this.relBase
-    m.halted = this.halted
-    m.mem ++= this.mem.clone()
-    m
+    // copy program
+    val that = this.copy()
+    // copy mutable state
+    that.out = this.out
+    that.ip = this.ip
+    that.relBase = this.relBase
+    that.halted = this.halted
+    that.mem.clear()
+    that.mem ++= this.mem.clone()
+    that
   }
 
   final def run(input: Long): MachineState = run(Seq(input))
