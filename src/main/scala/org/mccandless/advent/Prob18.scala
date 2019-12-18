@@ -4,7 +4,7 @@ import org.mccandless.advent.geometry.Point
 import org.mccandless.advent.util.Parser
 import Prob18Types._
 
-import scala.collection.{immutable, mutable}
+import scala.collection.mutable
 
 object Prob18 extends Parser[String] with App {
 
@@ -111,43 +111,6 @@ object Prob18 extends Parser[String] with App {
     require(l.size <= 1)
     l.keys.headOption
   }
-
-
-  // return None if there is no path
-//  def shortestPathTo(grid: Grid, start: Point, end: Point): Option[Long] = {
-//    val distancesTo: mutable.Map[Point, Long] = mutable.Map.empty.withDefaultValue(Long.MaxValue)
-//    distancesTo += (start -> 0L)
-//
-//    var states: List[Point] = List(start)
-//
-//    while (states.nonEmpty) {
-//      val curPos = states.head
-//      states = states.tail
-//
-//      val newDist = distancesTo(curPos) + 1
-//
-//      Seq(MoveNorth, MoveSouth, MoveWest, MoveEast).foreach { move =>
-//
-//        val newPos = curPos + move.diff
-//
-//        grid(newPos) match {
-//          case _ if newPos == end =>
-//            return Option(newDist)
-//          case '#' =>
-//          case '.' if newDist < distancesTo(newPos) =>
-//            states = states :+ newPos
-//            distancesTo(newPos) = newDist
-//          case _ =>
-//        }
-//      }
-//    }
-//
-//
-//    distancesTo.get(end)
-//  }
-//  require(shortestPathTo(smallGrid2, Point(15, 1), Point(17, 1)).contains(2))
-//  require(shortestPathTo(smallGrid2, Point(15, 1), Point(18, 1)).isEmpty)
-
 
 
   def getValidMoves(grid: Grid, startPos: Point, acquiredKeys: Set[Char]): Seq[(Point, Long)] = {
