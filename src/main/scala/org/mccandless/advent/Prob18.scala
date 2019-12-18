@@ -9,6 +9,7 @@ import scala.collection.mutable
 object Prob18 extends Parser[String] with App {
 
   override val inputFileName = "prob18_input.txt"
+  val inputFileNamePart2 = "prob18_input_part2.txt"
   override def parse(line: String): String = line
 
 
@@ -36,6 +37,13 @@ object Prob18 extends Parser[String] with App {
     "#b.A.@.a#",
     "#########"
   ))) == Point(5,1))
+
+
+  def getCurPositionsPart2(grid: Grid): Seq[Point] = {
+    val x = grid.filter(_._2 == entrance).keys.toSeq
+    require(x.length == 4)
+    x
+  }
 
 
   val smallGrid1: Grid = toGrid(Seq(
@@ -135,7 +143,7 @@ object Prob18 extends Parser[String] with App {
             if (newDist < distancesTo(newPos)) {
               distancesTo(newPos) = newDist
               if (acquiredKeys.contains(key)) {
-                states = states :+ newPos
+                states = newPos :: states
               }
             }
 
@@ -143,12 +151,12 @@ object Prob18 extends Parser[String] with App {
             if (newDist < distancesTo(newPos)) {
               distancesTo(newPos) = newDist
               if (acquiredKeys.contains(door.toLower)) {
-                states = states :+ newPos
+                states = newPos :: states
               }
             }
             // empty space, we should check our dist and proceed
           case '.' | '@' if newDist < distancesTo(newPos) =>
-            states = states :+ newPos
+            states = newPos :: states
             distancesTo(newPos) = newDist
           // wall, we are blocked
           case _ =>
@@ -209,7 +217,7 @@ object Prob18 extends Parser[String] with App {
         // if we have found a shorter path to this new grid state, queue it up and update distancesTo
         if (newDist < distancesTo(newState)) {
 //          println(s"found a shorter path")
-          states = states :+ newState
+          states = newState :: states
           distancesTo(newState) = newDist
         }
       }
@@ -231,8 +239,55 @@ object Prob18 extends Parser[String] with App {
   require(part1(this.smallGrid5) == 81)
   println("passed check 5")
 
-  println(part1(this.toGrid(this.input().toSeq)))
+//  println(part1(this.toGrid(this.input().toSeq)))
   // 4248 correct
+
+
+  def part2(grid: Grid): Long = {
+    // map robot ids to their positions, and track keys we have acquired so far
+    type State = (Map[Int, Point], Set[Char])
+
+    val allKeys = this.getKeys(grid)
+    println(s"need to acquire ${allKeys.size} keys")
+
+    val startRobotPositions: Map[Int, Point] = this.getCurPositionsPart2(grid).zipWithIndex.map(_.swap).toMap
+    val startState: State = (startRobotPositions, Set.empty[Char])
+    val distancesTo: mutable.Map[State,Long] = mutable.Map.empty.withDefaultValue(Long.MaxValue)
+    distancesTo += (startState -> 0L)
+    var states: List[State] = List(startState)
+
+    while(states.nonEmpty) {
+      val (curPositions, keys) = states.head
+      states = states.tail
+
+      // loop over each robot
+      curPositions.foreach { case (id, curPos) =>
+
+        val paths: Seq[(Point, Long)] = getValidMoves(grid, curPos, keys)
+        println(s"num valid moves for bot id $id: ${paths.length} $paths")
+
+        // loop over each robots paths
+        paths.foreach { case (keyLocation, length) =>
+          val newDist: Long = distancesTo((curPositions, keys)) + length
+
+          val newKeys = keys + grid(keyLocation)
+          val newPos = keyLocation
+
+          val newState: (Map[Int, Point], Set[Char]) = (curPositions.updated(id, newPos), newKeys)
+          if (newDist < distancesTo(newState)) {
+            states = newState :: states
+            distancesTo(newState) = newDist
+          }
+        }
+      }
+    }
+
+    distancesTo.filter(_._1._2.size == allKeys.size).values.min
+  }
+
+
+  val part2Grid: Grid = toGrid(this.input(this.inputFileNamePart2).toSeq)
+  println(part2(part2Grid))
 }
 
 

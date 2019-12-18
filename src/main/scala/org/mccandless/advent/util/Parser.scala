@@ -9,8 +9,8 @@ import scala.io.{BufferedSource, Source}
 trait Parser[I] {
   val inputFileName: String
 
-  def input(): Iterator[I] = {
-    val source: BufferedSource = Source.fromResource(inputFileName)
+  def input(fileName: String = this.inputFileName): Iterator[I] = {
+    val source: BufferedSource = Source.fromResource(fileName)
     val res: Iterator[I] = source.getLines.map(parse).toList.iterator
     source.close()
     res
