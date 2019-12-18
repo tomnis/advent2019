@@ -15,7 +15,7 @@ object Prob18 extends Parser[String] with App {
   def toGrid(lines: Seq[String]): Grid = {
     val cells = for {
       (line, row) <- lines.zipWithIndex
-      (elem, col) <- line.zipWithIndex
+      (elem, col) <- line.toCharArray.zipWithIndex
     } yield (Point(col, row) -> elem)
     cells.toMap
   }
@@ -39,6 +39,13 @@ object Prob18 extends Parser[String] with App {
 
 
   val smallGrid1: Grid = toGrid(Seq(
+    "#########",
+    "#b.A.@.a#",
+    "#########"
+  ))
+
+
+  val smallGrid2: Grid = toGrid(Seq(
     "########################",
     "#f.D.E.e.C.b.A.@.a.B.c.#",
     "######################.#",
@@ -47,63 +54,152 @@ object Prob18 extends Parser[String] with App {
   ))
 
 
+  val smallGrid3: Grid = toGrid(Seq(
+    "########################",
+    "#...............b.C.D.f#",
+    "#.######################",
+    "#.....@.a.B.c.d.A.e.F.g#",
+    "########################"
+  ))
+
+
+  val smallGrid4: Grid = toGrid(Seq(
+    "#################",
+    "#i.G..c...e..H.p#",
+    "########.########",
+    "#j.A..b...f..D.o#",
+    "########@########",
+    "#k.E..a...g..B.n#",
+    "########.########",
+    "#l.F..d...h..C.m#",
+    "#################"
+  ))
+
+
+  val smallGrid5: Grid = toGrid(Seq(
+    "########################",
+    "#@..............ac.GI.b#",
+    "###d#e#f################",
+    "###A#B#C################",
+    "###g#h#i################",
+    "########################"
+  ))
+
+
   def isKey(c: Char): Boolean = c.isLetter && c.isLower
   require(isKey('a'))
   require(!isKey('A'))
+  require(!isKey('#'))
+  require(!isKey('.'))
 
 
   def isDoor(c: Char): Boolean = c.isLetter && c.isUpper
   require(!isDoor('a'))
   require(isDoor('A'))
+  require(!isDoor('#'))
+  require(!isDoor('.'))
 
   def getKeys(grid: Grid): Grid = grid.filter { case (_, value) => isKey(value) }
   def getDoors(grid: Grid): Grid = grid.filter { case (_, value) => isDoor(value) }
 
 
-  def getDoorPos(grid: Grid, key: Char): Point = {
+  def getDoorPos(grid: Grid, key: Char): Option[Point] = {
     val k = getKeys(grid).filter(_._2 == key)
     require(k.size == 1)
     val l = getDoors(grid).filter(_._2 == key.toUpper)
-    require(l.size == 1)
-    l.keys.head
+    // its possible that this key has no corresponding door
+    require(l.size <= 1)
+    l.keys.headOption
   }
 
 
   // return None if there is no path
-  def shortestPathTo(grid: Grid, start: Point, end: Point): Option[Long] = {
-    val distancesTo: mutable.Map[Point, Long] = mutable.Map.empty.withDefaultValue(Long.MaxValue)
-    distancesTo += (start -> 0L)
+//  def shortestPathTo(grid: Grid, start: Point, end: Point): Option[Long] = {
+//    val distancesTo: mutable.Map[Point, Long] = mutable.Map.empty.withDefaultValue(Long.MaxValue)
+//    distancesTo += (start -> 0L)
+//
+//    var states: List[Point] = List(start)
+//
+//    while (states.nonEmpty) {
+//      val curPos = states.head
+//      states = states.tail
+//
+//      val newDist = distancesTo(curPos) + 1
+//
+//      Seq(MoveNorth, MoveSouth, MoveWest, MoveEast).foreach { move =>
+//
+//        val newPos = curPos + move.diff
+//
+//        grid(newPos) match {
+//          case _ if newPos == end =>
+//            return Option(newDist)
+//          case '#' =>
+//          case '.' if newDist < distancesTo(newPos) =>
+//            states = states :+ newPos
+//            distancesTo(newPos) = newDist
+//          case _ =>
+//        }
+//      }
+//    }
+//
+//
+//    distancesTo.get(end)
+//  }
+//  require(shortestPathTo(smallGrid2, Point(15, 1), Point(17, 1)).contains(2))
+//  require(shortestPathTo(smallGrid2, Point(15, 1), Point(18, 1)).isEmpty)
 
-    var states: List[Point] = List(start)
+
+
+  def getValidMoves(grid: Grid, startPos: Point, acquiredKeys: Set[Char]): Seq[(Point, Long)] = {
+
+    var curPos = startPos
+    var states: List[Point] = List(curPos)
+    val distancesTo: mutable.Map[Point, Long] = mutable.Map.empty.withDefaultValue(Long.MaxValue)
+    distancesTo += (curPos -> 0L)
 
     while (states.nonEmpty) {
-      val curPos = states.head
+      curPos = states.head
       states = states.tail
-
       val newDist = distancesTo(curPos) + 1
 
       Seq(MoveNorth, MoveSouth, MoveWest, MoveEast).foreach { move =>
 
         val newPos = curPos + move.diff
-
+//        println(s"new pos: $newPos   ${grid(newPos)}")
         grid(newPos) match {
-          case _ if newPos == end =>
-            return Option(newDist)
-          case '#' =>
-          case '.' if !states.contains(newPos) && newDist < distancesTo(newPos) =>
+            // we found a key location, but cant move any further
+          case key if isKey(key) =>
+            if (newDist < distancesTo(newPos)) {
+              distancesTo(newPos) = newDist
+              if (acquiredKeys.contains(key)) {
+                states = states :+ newPos
+              }
+            }
+
+          case door if isDoor(door) =>
+            if (newDist < distancesTo(newPos)) {
+              distancesTo(newPos) = newDist
+              if (acquiredKeys.contains(door.toLower)) {
+                states = states :+ newPos
+              }
+            }
+            // empty space, we should check our dist and proceed
+          case '.' | '@' if newDist < distancesTo(newPos) =>
             states = states :+ newPos
             distancesTo(newPos) = newDist
-            // blocked
+          // wall, we are blocked
           case _ =>
         }
       }
     }
 
-
-    distancesTo.get(end)
+    distancesTo.toSeq.filter { case (point, _) =>
+      isKey(grid(point)) && !acquiredKeys.contains(grid(point))
+    }
   }
-  require(shortestPathTo(smallGrid1, Point(15, 1), Point(17, 1)).contains(2))
-  require(shortestPathTo(smallGrid1, Point(15, 1), Point(18, 1)).isEmpty)
+
+
+
 
 
   // a massive underground vault.
@@ -112,59 +208,68 @@ object Prob18 extends Parser[String] with App {
 
   def part1(grid: Grid): Long = {
 
+    type State = (Point, Set[Char])
     // collecting the key unlocks corresponding door
 
+    val allKeys = this.getKeys(grid)
+    println(s"need to acquire ${allKeys.size} keys")
     // get all the keys that have an open path
+    val startState = (getCurPosition(grid), Set.empty[Char])
+    val distancesTo: mutable.Map[State, Long] = mutable.Map.empty.withDefaultValue(Long.MaxValue)
+    distancesTo += (startState -> 0L)
+    var states: List[State] = List(startState)
 
-    val distancesTo: mutable.Map[Grid, Long] = mutable.Map.empty.withDefaultValue(Long.MaxValue)
-    distancesTo += (grid -> 0L)
-
-    var states: List[Grid] = List(grid)
     while(states.nonEmpty) {
-      val curGrid = states.head
+      val (curPos, keys) = states.head
       states = states.tail
-      val curPos: Point = getCurPosition(curGrid)
-
-      // get the keys we can move to
-      val keys = getKeys(curGrid)
 
       // foreach key with an open path
-      val paths: Seq[Option[(Point, Long)]] = keys.map { case (point, _) =>
-        shortestPathTo(curGrid, curPos, point).map { length => (point, length) }
-      }.toSeq
+      val paths: Seq[(Point, Long)] = getValidMoves(grid, curPos, keys)
 
-      println(s"num remaining keys: ${paths.length}")
+      println(s"num valid moves: ${paths.length} $paths")
 
       // copy the grid
-      paths.flatten.foreach { case (keyLocation, length) =>
-        val key: Char = curGrid(keyLocation)
-        val newDist: Long = distancesTo(curGrid) + length
+      paths.foreach { case (keyLocation, length) =>
+//        println(s"acquiring key $keyLocation ${grid(keyLocation)}")
+        val newDist: Long = distancesTo((curPos, keys)) + length
 
 //        println(s"current position: $curPos, checking dest $keyLocation (key=$key, length=$length)")
-        var newGrid: Grid = Map.empty ++ curGrid
         // grid(key) == entrance
-        newGrid = newGrid.updated(keyLocation, entrance)
+        val newKeys = keys + grid(keyLocation)
+        val newPos = keyLocation
         // move our position to key position
-        newGrid = newGrid.updated(curPos, passage)
         // unlock the door
         // grid(door(key)) == passage
-        newGrid = newGrid.updated(getDoorPos(curGrid, key), passage)
+        // there may not be a door corresponding to this key
 
+        val newState = (newPos, newKeys)
         // if we have found a shorter path to this new grid state, queue it up and update distancesTo
-        if (!states.contains(newGrid) && newDist < distancesTo(newGrid)) {
+        if (newDist < distancesTo(newState)) {
 //          println(s"found a shorter path")
-          states = states :+ newGrid
-          distancesTo(newGrid) = newDist
+          states = states :+ newState
+          distancesTo(newState) = newDist
         }
       }
     }
 
 
-    distancesTo.filter(_._1.values.toSet.size == 3).head._2
+    distancesTo.filter(_._1._2.size == allKeys.size).values.min
   }
 
 
+  require(part1(this.smallGrid1) == 8)
+  println("passed check 1")
+  require(part1(this.smallGrid2) == 86)
+  println("passed check 2")
+  require(part1(this.smallGrid3) == 132)
+  println("passed check 3")
+  require(part1(this.smallGrid4) == 136)
+  println("passed check 4")
+  require(part1(this.smallGrid5) == 81)
+  println("passed check 5")
+
   println(part1(this.toGrid(this.input().toSeq)))
+  // 4248 correct
 }
 
 
