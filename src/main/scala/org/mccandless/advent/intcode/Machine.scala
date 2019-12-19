@@ -8,7 +8,8 @@ case class Machine(program: Seq[Long]) {
   var out: Long = 0
   var ip: Long = 0
   var relBase: Long = 0
-  var halted: Boolean = false
+  var isAwaitingInput: Boolean = false
+  var isHalted: Boolean = false
   val mem: mutable.Map[Long, Long] = mutable.Map.empty.withDefaultValue(0L) ++ program.zipWithIndex.map(a => (a._2.toLong, a._1)).toMap
 
 
@@ -19,7 +20,8 @@ case class Machine(program: Seq[Long]) {
     that.out = this.out
     that.ip = this.ip
     that.relBase = this.relBase
-    that.halted = this.halted
+    that.isAwaitingInput = this.isAwaitingInput
+    that.isHalted = this.isHalted
     that.mem.clear()
     that.mem ++= this.mem.clone()
     that
@@ -33,14 +35,18 @@ case class Machine(program: Seq[Long]) {
         halt
       // we dont have any input for now, pause
       case INPUT(_, _) if inputs.isEmpty =>
+        isAwaitingInput = true
         pause
       case input @ INPUT(_, _) =>
         process(input.copy(maybeIn = inputs.headOption))
+        isAwaitingInput = false
         run(inputs.tail)
       case OUTPUT(_) =>
+        isAwaitingInput = false
         process(op)
         pause
       case _ =>
+        isAwaitingInput = false
         process(op)
         run(inputs)
     }
@@ -62,7 +68,8 @@ case class Machine(program: Seq[Long]) {
 
   def halt: MachineState = {
     println("HALT\n\n")
-    halted = true
+    isAwaitingInput = false
+    isHalted = true
     Halted(out)
   }
 

@@ -1,9 +1,11 @@
 package org.mccandless.advent
 
+import org.mccandless.advent.Prob11Types.{Left90, Right90, Rotate}
 import org.mccandless.advent.Prob17Types._
 import org.mccandless.advent.geometry.Point
 import org.mccandless.advent.intcode.Machine
 import org.mccandless.advent.intcode.Types.{ParsesIntCode, Program}
+import org.mccandless.advent.util.cardinal.{Cardinal, East, North, South, West}
 
 import scala.collection.mutable
 
@@ -57,7 +59,7 @@ object Prob17 extends ParsesIntCode with App {
     val map: mutable.Map[Point, Char] = mutable.Map.empty
     var x: Long = 0
     var y: Long = 0
-    while(!m.halted) {
+    while(!m.isHalted) {
       val o = m.run().output
 
       if (o == 10) {
@@ -84,6 +86,9 @@ object Prob17 extends ParsesIntCode with App {
   println(part1(this.input().next()))
 
 
+
+  def getStartingState(value: Map[Point, Char]) = ???
+
   // part 2
   // visit every part of the scaffold at least once.
   // Force the vacuum robot to wake up by changing the value in your ASCII program at address 0 from 1 to 2
@@ -103,12 +108,40 @@ object Prob17 extends ParsesIntCode with App {
 
   def getPath(map: Map[Point, Char]): Seq[MovementCommand] = {
 
-    Seq(TurnLeft, MoveForward(5))
+
+
+    // get starting state, scan map for our location and orientation
+    val start: State = getStartingState(map)
+
+    val distancesTo: mutable.Map[State, Long] = mutable.Map.empty.withDefaultValue(Long.MaxValue)
+    distancesTo += (start -> 0L)
+    var states: List[State] = List(start)
+
+    while (states.nonEmpty) {
+      val curState = states.head
+      states = states.tail
+
+
+      // get validMoves
+//      val paths = getValidMoves(map, curState)
+
+    }
+
+
+
+
+    Seq(TurnLeft, MoveForward(10), TurnRight, MoveForward(8), TurnLeft, MoveForward(6), TurnRight, MoveForward(6), TurnLeft, MoveForward(8))
   }
 
   def compressPath(path: Seq[MovementCommand]): MovementStrategy = {
-    MovementStrategy(Seq(A, A), path, Seq.empty, Seq.empty)
+    MovementStrategy(Seq(A), path, path, path)
   }
+
+
+
+
+  def runUntilInput(m: Machine): Unit = while(!m.isAwaitingInput) print(m.run().output.toChar)
+
 
 
   def part2(program: Program): Long = {
@@ -124,26 +157,38 @@ object Prob17 extends ParsesIntCode with App {
     val strat: MovementStrategy = compressPath(path)
 
     // prompted for main movement function, then each subroutine
-    val main: Seq[Long] = encode(strat.main.map(_.code))
-    val subA: Seq[Long] = encode(strat.fA.map(_.code))
-    val subB: Seq[Long] = encode(strat.fB.map(_.code))
-    val subC: Seq[Long] = encode(strat.fC.map(_.code))
+    val main: Seq[Long] = encode(strat.main)
+    if (main.length > 21) throw new RuntimeException("main is too long")
 
-    vacuum.run(main)
-    vacuum.run(subA)
-    vacuum.run(subB)
-    vacuum.run(subC)
+    val subA: Seq[Long] = encode(strat.fA)
+    if (subA.length > 21) throw new RuntimeException("subA is too long")
+
+    val subB: Seq[Long] = encode(strat.fB)
+    if (subB.length > 21) throw new RuntimeException("subB is too long")
+
+    val subC: Seq[Long] = encode(strat.fC)
+    if (subC.length > 21) throw new RuntimeException("subC is too long")
+
+    runUntilInput(vacuum)
+    print(vacuum.run(main).output.toChar)
+    runUntilInput(vacuum)
+    print(vacuum.run(subA).output.toChar)
+    runUntilInput(vacuum)
+    print(vacuum.run(subB).output.toChar)
+    runUntilInput(vacuum)
+    print(vacuum.run(subC).output.toChar)
+    runUntilInput(vacuum)
 
     // continuous video feed?
     // requires a significant amount of processing power, and may even cause your Intcode computer to overheat
-    var output = vacuum.run(Seq('y'.toLong, newLine))
+    print(vacuum.run(Seq('y'.toLong, newLine)).output.toChar)
 
-    while(!vacuum.halted) {
-      print(output.output.toChar)
-      if (output.output == tumbling) {
+    while(!vacuum.isHalted) {
+      vacuum.run()
+      print(vacuum.out.toChar)
+      if (vacuum.out == tumbling) {
         throw new RuntimeException(s"vacuum bot is tumbling in space")
       }
-      output = vacuum.run()
     }
 
     vacuum.out
@@ -159,38 +204,70 @@ object Prob17Types {
   val space: Long = 46
   val tumbling: Long = 'X'.toLong
 
-  // intersperse commas and append newline
-  def encode(code: Seq[Long]): Seq[Long] = code.flatMap(c => Seq(c, comma)).dropRight(1) :+ newLine
+
+  def encode(commands: Seq[Code]): Seq[Long] = commands.map(_.rep).mkString(",").map(_.toLong) :+ newLine
 
   trait Code {
-    val rep: Char
-    lazy val code: Long = this.rep.toLong
+    val rep: String
   }
 
   sealed trait Routine extends Code
   case object A extends Routine {
-    override val rep: Char = 'A'
+    override val rep: String = "A"
   }
   case object B extends Routine {
-    override val rep: Char = 'B'
+    override val rep: String = "B"
   }
   case object C extends Routine {
-    override val rep: Char = 'C'
+    override val rep: String = "C"
   }
 
 
   sealed trait MovementCommand extends Code
   case object TurnLeft extends MovementCommand {
-    override val rep: Char = 'L'
+    override val rep: String = "L"
   }
   case object TurnRight extends MovementCommand {
-    override val rep: Char = 'R'
+    override val rep: String = "R"
   }
   case class MoveForward(steps: Long) extends MovementCommand {
-    override val rep: Char = '_'
-    override lazy val code: Long = steps
+    override val rep: String = steps.toString
   }
 
   // sequence of A, B, or C
   case class MovementStrategy(main: Seq[Routine], fA: Seq[MovementCommand], fB: Seq[MovementCommand], fC: Seq[MovementCommand])
+
+
+  // store (direction, point)
+  case class State(direction: Cardinal, point: Point, visited: Set[Point]) {
+
+
+
+    def next(cmd: MovementCommand): State = (direction, point, cmd) match {
+      case (North, _, TurnLeft) => this.copy(direction = West)
+      case (North, _, TurnRight) => this.copy(direction = East)
+      case (North, p, MoveForward(steps)) => this.copy(point = p + Point(0, -steps))
+
+      case (South, _, TurnLeft) => this.copy(direction = East)
+      case (South, _, TurnRight) => this.copy(direction = West)
+      case (South, p, MoveForward(steps)) => this.copy(point = p + Point(0, steps))
+
+      case (East, _, TurnLeft) => this.copy(direction = North)
+      case (East, _, TurnRight) => this.copy(direction = South)
+      case (East, p, MoveForward(steps)) => this.copy(point = p + Point(steps, 0))
+
+      case (West, _, TurnLeft) => this.copy(direction = South)
+      case (West, _, TurnRight) => this.copy(direction = North)
+      case (West, p, MoveForward(steps)) => this.copy(point = p + Point(-steps, 0))
+    }
+  }
+
+
+
+
+
+
+
+
+
 }

@@ -105,12 +105,12 @@ object Prob13 extends ParsesIntCode with App {
       if (x == -1 && y == 0) {
         score = tileState.output
       }
-      else if (!m.halted) {
+      else if (!m.isHalted) {
         screen += (Point(x, y) -> Tile(tileState.output))
       }
 //      render(screen.toMap, score)
 //      Thread.sleep(20)
-      gameDone = m.halted
+      gameDone = m.isHalted
     }
 
     score
@@ -183,46 +183,3 @@ object Prob13Types {
     }
   }
 }
-
-
-//var doneDrawing = false
-//
-//while(!doneDrawing) {
-//println(s"running with input: $input")
-//val x = m.run().output
-//val y = m.run().output
-//val tileState = m.run()
-//if (x == -1 && y == 0) {
-//score = tileState.output
-//println(s"set score $score. should be done drawing?")
-//doneDrawing = true
-//}
-//else {
-//val tile = tileState.output
-//screen += (Point(x, y) -> Tile(tile))
-//}
-//
-//tileState match {
-//// we are expecting another output
-//case Paused(_) =>
-//println("paused while drawing, more outputs coming")
-//case AwaitingInput(_) =>
-//println("awaiting input")
-//doneDrawing = true
-//case Halted(_) =>
-//println("halted")
-//doneDrawing = true
-//gameDone = true
-//}
-//}
-//
-//
-//if (!gameDone) {
-//val ballPos = this.getBall(screen.toMap)
-//val paddlePos = this.getPaddle(screen.toMap)
-//val tilt = this.getInput(ballPos.x, paddlePos.x)
-//println(s"joystick: $tilt")
-//input = Option(tilt.rep)
-//}
-//render(screen.toMap, score)
-//Thread.sleep(100)
