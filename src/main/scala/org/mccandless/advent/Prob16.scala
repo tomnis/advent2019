@@ -99,7 +99,7 @@ object Prob16 extends Parser[Seq[Long]] with App {
 
       (realInput.length - 1) to offset by -1 foreach { idx =>
         sum += realInput(idx)
-        sum = sum % 10
+        sum %= 10
         realInput(idx) = sum
       }
 
