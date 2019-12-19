@@ -108,14 +108,12 @@ object Prob19 extends ParsesIntCode with App {
   def getAllPulledPointsOnRow(startState: Machine, y: Long, prevRow: Set[Point]): Set[Point] = {
     if (prevRow.isEmpty) scanRowFromScratch(startState, y)
     else {
-
       // start from leftmost point, scan left and right
       val leftMost: Point = prevRow.minBy(_.x)
-
       // start from rightmost point, scan left and right
       val rightMost: Point = prevRow.maxBy(_.x)
 
-
+      // some border conditions
       val res = scanLeftAndRight(startState, Point(leftMost.x, y)) ++ scanLeftAndRight(startState, Point(rightMost.x, y))
       if (res.isEmpty) scanRowFromScratch(startState, y)
       else res
@@ -149,6 +147,7 @@ object Prob19 extends ParsesIntCode with App {
 
     var prevRow: Set[Point] = Set.empty
 
+    // pretty suboptimal
     (0 to 10000).foreach { i =>
 
       // get all the pulled points on this row
@@ -162,15 +161,12 @@ object Prob19 extends ParsesIntCode with App {
         }
       }
 
-
       prevRow = pulledPointsInRow
     }
 
-
     // 2500200 too low
-    0
+    -1
   }
-
 
   println(part2(this.input().next()))
 }
