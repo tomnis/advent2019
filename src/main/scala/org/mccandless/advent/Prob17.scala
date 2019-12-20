@@ -101,9 +101,9 @@ object Prob17 extends ParsesIntCode with App {
     grid.values.count(canMoveTo)
   }
 
-  def getValidMoves(grid: Map[Point, Char], curState: State): Set[MovementCommand] = {
+  def getValidMoves(grid: Map[Point, Char], curState: State): Seq[MovementCommand] = {
     val newGrid = grid.withDefaultValue(space.toChar)
-    val res: mutable.Set[MovementCommand] = mutable.Set(TurnLeft, TurnRight)
+    var res: List[MovementCommand] = List(TurnLeft, TurnRight)
 
     val curPoint = curState.point
     curState.direction match {
@@ -114,7 +114,7 @@ object Prob17 extends ParsesIntCode with App {
         }
         val moves: Long = curPoint.y - curNorthPoint.y
         if (moves > 1) {
-          res += MoveForward(moves)
+          res = MoveForward(moves) :: res
         }
       }
       case South =>
@@ -124,7 +124,7 @@ object Prob17 extends ParsesIntCode with App {
         }
         val moves: Long = curSouthPoint.y - curState.point.y
         if (moves > 1) {
-          res += MoveForward(moves)
+          res = MoveForward(moves) :: res
         }
       case East =>
         var curEastPoint = eastOf(curPoint)
@@ -133,7 +133,7 @@ object Prob17 extends ParsesIntCode with App {
         }
         val moves: Long = curEastPoint.x - curState.point.x
         if (moves > 1) {
-          res += MoveForward(moves)
+          res = MoveForward(moves) :: res
         }
       case West =>
         var curWestPoint = westOf(curPoint)
@@ -142,12 +142,12 @@ object Prob17 extends ParsesIntCode with App {
         }
         val moves: Long = curState.point.x - curWestPoint.x
         if (moves > 1) {
-          res += MoveForward(moves)
+          res = MoveForward(moves) :: res
         }
     }
 
 
-    res.toSet
+    res
   }
 
   // part 2
@@ -185,7 +185,7 @@ object Prob17 extends ParsesIntCode with App {
       val prevState: State = states.head
       states = states.tail
       // get validMoves
-      val cmds: Set[MovementCommand] = getValidMoves(map, prevState)
+      val cmds: Seq[MovementCommand] = getValidMoves(map, prevState)
       println(s"$prevState , $cmds")
 
       cmds.foreach { cmd: MovementCommand =>
@@ -335,29 +335,39 @@ object Prob17Types {
       case (North, _, TurnLeft) => this.copy(direction = West)
       case (North, _, TurnRight) => this.copy(direction = East)
       case (North, oldPoint, MoveForward(steps)) => {
-        val newPoint: Point = oldPoint + Point(0, -steps)
-        this.copy(point = newPoint, visited = visited + newPoint)
+        val newVisited: Seq[Point] = (1L to steps).map { yStep =>
+          oldPoint + Point(0, -yStep)
+
+        }
+        this.copy(point = newVisited.last, visited = visited ++ newVisited.toSet)
       }
 
       case (South, _, TurnLeft) => this.copy(direction = East)
       case (South, _, TurnRight) => this.copy(direction = West)
       case (South, oldPoint, MoveForward(steps)) => {
-        val newPoint: Point = oldPoint + Point(0, steps)
-        this.copy(point = newPoint, visited = visited + newPoint)
+        val newVisited: Seq[Point] = (1L to steps).map { yStep =>
+          oldPoint + Point(0, yStep)
+        }
+        this.copy(point = newVisited.last, visited = visited ++ newVisited.toSet)
       }
 
       case (East, _, TurnLeft) => this.copy(direction = North)
       case (East, _, TurnRight) => this.copy(direction = South)
       case (East, oldPoint, MoveForward(steps)) => {
-        val newPoint: Point = oldPoint + Point(steps, 0)
-        this.copy(point = newPoint, visited = visited + newPoint)
+        val newVisited: Seq[Point ] = (1L to steps).map { xStep =>
+          oldPoint + Point(xStep, 0)
+
+        }
+        this.copy(point = newVisited.last, visited = visited ++ newVisited.toSet)
       }
 
       case (West, _, TurnLeft) => this.copy(direction = South)
       case (West, _, TurnRight) => this.copy(direction = North)
       case (West, oldPoint, MoveForward(steps)) => {
-        val newPoint: Point = oldPoint + Point(-steps, 0)
-        this.copy(point = newPoint, visited = visited + newPoint)
+        val newVisited: Seq[Point] = (1L to steps).map { xStep =>
+          oldPoint + Point(-xStep, 0)
+        }
+        this.copy(point = newVisited.last, visited = visited ++ newVisited.toSet)
       }
     }
   }
