@@ -31,8 +31,23 @@ case class Point(x: Long, y: Long) {
 //    (this.x to other.x by xStep) zip (this.y to other.y by yStep) map { case (x, y) => Point(x, y) }
   }
 
-  def -(other: Point): Point = Point(this.x - other.x, this.y - other.y)
-  def +(other: Point): Point = Point(this.x + other.x, this.y + other.y)
+  def -(other: Point): Point = Point(x - other.x, y - other.y)
+  def +(other: Point): Point = Point(x + other.x, y + other.y)
+
+
+
+
+  def plusX(delta: Long): Point = copy(x = x + delta)
+  def minusX(delta: Long): Point = plusX(-delta)
+
+  def plusY(delta: Long): Point = copy(y = y + delta)
+  def minusY(delta: Long): Point = plusY(-delta)
+
+
+  def up: Point = minusY(1)
+  def down: Point = plusY(1)
+  def left: Point = minusX(1)
+  def right: Point = plusX(1)
 
 
   def angle(other: Point): Double = {

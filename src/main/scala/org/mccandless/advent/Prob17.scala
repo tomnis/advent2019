@@ -35,12 +35,20 @@ object Prob17 extends ParsesIntCode with App {
     val yMin = map.keys.minBy(_.y).y
     val yMax = map.keys.maxBy(_.y).y
 
+    for (x <- xMin to xMax) { print(if (x / 10 > 0) x / 10 else " ") }
+    println()
+    for (x <- xMin to xMax) { print(x % 10) }
+    println()
     for (y <- yMin to yMax) {
       for (x <- xMin to xMax) {
         print(map(Point(x,y)))
       }
-      println()
+      println(s"  $y")
     }
+    for (x <- xMin to xMax) { print(if (x / 10 > 0) x / 10 else " ") }
+    println()
+    for (x <- xMin to xMax) { print(x % 10) }
+    println()
   }
 
 
@@ -84,70 +92,12 @@ object Prob17 extends ParsesIntCode with App {
     val bot = pos.head
     val dir = Cardinal(bot._2)
 
-    State(dir, bot._1, Set(bot._1))
+    State(dir, bot._1)
   }
 
 
   def canMoveTo(cell: Char): Boolean = {
     cell == scaffold.toChar || Cardinal.validChars.contains(cell)
-  }
-
-  def northOf(p: Point): Point = p + Point(0, -1)
-  def southOf(p: Point): Point = p + Point(0, 1)
-  def eastOf(p: Point): Point = p + Point(1, 0)
-  def westOf(p: Point): Point = p + Point(-1, 0)
-
-  def numScaffold(grid: Map[Point, Char]): Long = {
-    grid.values.count(canMoveTo)
-  }
-
-  def getValidMoves(grid: Map[Point, Char], curState: State): Seq[MovementCommand] = {
-    val newGrid = grid.withDefaultValue(space.toChar)
-    var res: List[MovementCommand] = List(TurnLeft, TurnRight)
-
-    val curPoint = curState.point
-    curState.direction match {
-      case North => {
-        var curNorthPoint = northOf(curPoint)
-        while (canMoveTo(newGrid(curNorthPoint)) && !canMoveTo(newGrid(westOf(curNorthPoint))) && !canMoveTo(newGrid(eastOf(curNorthPoint)))) {
-          curNorthPoint = northOf(curNorthPoint)
-        }
-        val moves: Long = curPoint.y - curNorthPoint.y
-        if (moves > 1) {
-          res = MoveForward(moves) :: res
-        }
-      }
-      case South =>
-        var curSouthPoint = southOf(curPoint)
-        while (canMoveTo(newGrid(curSouthPoint)) && !canMoveTo(newGrid(westOf(curSouthPoint))) && !canMoveTo(newGrid(eastOf(curSouthPoint)))) {
-          curSouthPoint = southOf(curSouthPoint)
-        }
-        val moves: Long = curSouthPoint.y - curState.point.y
-        if (moves > 1) {
-          res = MoveForward(moves) :: res
-        }
-      case East =>
-        var curEastPoint = eastOf(curPoint)
-        while (canMoveTo(newGrid(curEastPoint)) && !canMoveTo(newGrid(northOf(curEastPoint))) && !canMoveTo(newGrid(southOf(curEastPoint)))) {
-          curEastPoint = eastOf(curEastPoint)
-        }
-        val moves: Long = curEastPoint.x - curState.point.x
-        if (moves > 1) {
-          res = MoveForward(moves) :: res
-        }
-      case West =>
-        var curWestPoint = westOf(curPoint)
-        while (canMoveTo(newGrid(curWestPoint)) && !canMoveTo(newGrid(northOf(curWestPoint))) && !canMoveTo(newGrid(southOf(curWestPoint)))) {
-          curWestPoint = westOf(curWestPoint)
-        }
-        val moves: Long = curState.point.x - curWestPoint.x
-        if (moves > 1) {
-          res = MoveForward(moves) :: res
-        }
-    }
-
-
-    res
   }
 
   // part 2
@@ -166,64 +116,86 @@ object Prob17 extends ParsesIntCode with App {
   // assuming it hasn't drifted off into space,
   // the cleaning robot will return to its docking station and report the amount of space dust it collected as a large, non-ASCII value in a single output instruction.
   // After visiting every part of the scaffold at least once, how much dust does the vacuum robot report it has collected?
+  def atEnd(map: Map[Point, Char], s: State): Boolean = atEnd(map, s.point, s.direction)
+
+  def atEnd(map: Map[Point, Char], cur: Point, dir: Cardinal): Boolean = {
+    require(canMoveTo(map(cur)))
+    // we are at the end if space is in front, left, and right
+    val sp: Char = space.toChar
+    map(dir.left(cur)) == sp && map(dir.front(cur)) == sp && map(dir.right(cur)) == sp
+  }
+
+
+  def followPath(map: Map[Point, Char]): Seq[MovementCommand] = {
+    val start: State = getStartingState(map)
+
+    val path: mutable.Buffer[MovementCommand] = mutable.Buffer.empty
+    var cur: State = start
+
+    while (!atEnd(map, cur)) {
+      // check front, left, and right
+      val cmds: Seq[MovementCommand] = if (canMoveTo(map(cur.front))) {
+        Seq(MoveForward(1))
+      }
+      else if (canMoveTo(map(cur.left))) {
+        Seq(TurnLeft, MoveForward(1))
+      }
+      else if (canMoveTo(map(cur.right))) {
+        Seq(TurnRight, MoveForward(1))
+      }
+      else {
+        Seq.empty
+      }
+
+
+      cmds.foreach { cmd =>
+        cur = cur.next(cmd)
+      }
+      path ++= cmds
+    }
+    println(cur)
+    path.toSeq
+  }
+
+
 
   def getPath(map: Map[Point, Char]): Seq[MovementCommand] = {
     val newMap = map.withDefaultValue(space.toChar)
-    val numValidCells: Long = numScaffold(map)
-    // get starting state, scan map for our location and orientation
-    val start: State = getStartingState(map)
-
-
-    // map states to previous states, used to reconstruct path
-    val cameFrom: mutable.Map[State, (State, MovementCommand)] = mutable.Map.empty
-    val distancesTo: mutable.Map[State, Long] = mutable.Map.empty.withDefaultValue(Long.MaxValue)
-    distancesTo += (start -> 0L)
-    var states: List[State] = List(start)
-
-    while (states.nonEmpty) {
-      println(s"num pending states: ${states.size}")
-      val prevState: State = states.head
-      states = states.tail
-      // get validMoves
-      val cmds: Seq[MovementCommand] = getValidMoves(map, prevState)
-      println(s"$prevState , $cmds")
-
-      cmds.foreach { cmd: MovementCommand =>
-        val newState: State = prevState.next(cmd)
-        if (!canMoveTo(newMap(newState.point))) {
-          println(newState)
-          println(newMap(newState.point))
-        }
-//        require(canMoveTo(newMap(newState.point)))
-        else {
-          val newDist = distancesTo(prevState) + 1
-          if (newDist < distancesTo(newState)) {
-            states = states :+ newState
-            distancesTo(newState) = newDist
-            cameFrom(newState) = (prevState, cmd)
-            if (newState.visited.size == numValidCells) {
-              throw new RuntimeException("found a path")
-            }
-          }
-        }
-      }
-    }
-
-    val end: State = distancesTo.filter(_._1.visited.size == numValidCells).minBy(_._2)._1
-    var path: List[MovementCommand] = Nil
-
-    var curPathNode: State = end
-    while (curPathNode != start) {
-      val (prevState, cmd) = cameFrom(curPathNode)
-      curPathNode = prevState
-      path = cmd :: path
-    }
-//    Seq(TurnLeft, MoveForward(10), TurnRight, MoveForward(8), TurnLeft, MoveForward(6), TurnRight, MoveForward(6), TurnLeft, MoveForward(8))
-    path
+    collapsePath(followPath(newMap))
   }
 
+
+  def collapsePath(path: Seq[MovementCommand]): Seq[MovementCommand] = {
+    path.foldRight(List.empty[MovementCommand]) {
+      case (MoveForward(a), MoveForward(b) :: cmds) => MoveForward(a + b) :: cmds
+      case (cmd, cmds) => cmd :: cmds
+    }
+  }
+
+
   def compressPath(path: Seq[MovementCommand]): MovementStrategy = {
-    MovementStrategy(Seq(A), path, path, path)
+    println(path.map(_.rep))
+
+
+    val pathA = path.take(8)
+
+    val pathB = path.drop(8).take(6)
+    val pathC = path.drop(22).take(8)
+
+
+    println()
+    println(pathA.map(_.rep))
+    println(pathA.map(_.rep) ++ pathB.map(_.rep))
+    println(pathA.map(_.rep) ++ pathB.map(_.rep) ++ pathA.map(_.rep))
+    println(pathA.map(_.rep) ++ pathB.map(_.rep) ++ pathA.map(_.rep) ++ pathC.map(_.rep))
+    println(pathA.map(_.rep) ++ pathB.map(_.rep) ++ pathA.map(_.rep) ++ pathC.map(_.rep) ++ pathA.map(_.rep))
+    println(pathA.map(_.rep) ++ pathB.map(_.rep) ++ pathA.map(_.rep) ++ pathC.map(_.rep) ++ pathA.map(_.rep) ++ pathB.map(_.rep) ++ pathC.map(_.rep) ++ pathB.map(_.rep) ++ pathC.map(_.rep) ++ pathB.map(_.rep))
+    println(path.map(_.rep))
+    println(pathC.map(_.rep))
+
+    val main = Seq(A, B, A, C, A, B, C, B, C, B)
+
+    MovementStrategy(main, pathA, pathB, pathC)
   }
 
 
@@ -283,7 +255,7 @@ object Prob17 extends ParsesIntCode with App {
     vacuum.out
   }
 
-  part2(input().next)
+  println(part2(input().next))
 }
 
 object Prob17Types {
@@ -328,56 +300,30 @@ object Prob17Types {
 
 
   // store (direction, point)
-  case class State(direction: Cardinal, point: Point, visited: Set[Point]) {
+  case class State(direction: Cardinal, point: Point) {
+
+    def front: Point = direction.front(point)
+    def back: Point = direction.back(point)
+    def left: Point = direction.left(point)
+    def right: Point = direction.right(point)
 
     // TODO handle visited
     def next(cmd: MovementCommand): State = (direction, point, cmd) match {
       case (North, _, TurnLeft) => this.copy(direction = West)
       case (North, _, TurnRight) => this.copy(direction = East)
-      case (North, oldPoint, MoveForward(steps)) => {
-        val newVisited: Seq[Point] = (1L to steps).map { yStep =>
-          oldPoint + Point(0, -yStep)
-
-        }
-        this.copy(point = newVisited.last, visited = visited ++ newVisited.toSet)
-      }
+      case (North, oldPoint, MoveForward(steps)) => this.copy(point = oldPoint.minusY(steps))
 
       case (South, _, TurnLeft) => this.copy(direction = East)
       case (South, _, TurnRight) => this.copy(direction = West)
-      case (South, oldPoint, MoveForward(steps)) => {
-        val newVisited: Seq[Point] = (1L to steps).map { yStep =>
-          oldPoint + Point(0, yStep)
-        }
-        this.copy(point = newVisited.last, visited = visited ++ newVisited.toSet)
-      }
+      case (South, oldPoint, MoveForward(steps)) => this.copy(point = oldPoint.plusY(steps))
 
       case (East, _, TurnLeft) => this.copy(direction = North)
       case (East, _, TurnRight) => this.copy(direction = South)
-      case (East, oldPoint, MoveForward(steps)) => {
-        val newVisited: Seq[Point ] = (1L to steps).map { xStep =>
-          oldPoint + Point(xStep, 0)
-
-        }
-        this.copy(point = newVisited.last, visited = visited ++ newVisited.toSet)
-      }
+      case (East, oldPoint, MoveForward(steps)) => this.copy(point = oldPoint.plusX(steps))
 
       case (West, _, TurnLeft) => this.copy(direction = South)
       case (West, _, TurnRight) => this.copy(direction = North)
-      case (West, oldPoint, MoveForward(steps)) => {
-        val newVisited: Seq[Point] = (1L to steps).map { xStep =>
-          oldPoint + Point(-xStep, 0)
-        }
-        this.copy(point = newVisited.last, visited = visited ++ newVisited.toSet)
-      }
+      case (West, oldPoint, MoveForward(steps)) => this.copy(point = oldPoint.minusX(steps))
     }
   }
-
-
-
-
-
-
-
-
-
 }
