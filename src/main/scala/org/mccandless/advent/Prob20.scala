@@ -3,8 +3,7 @@ package org.mccandless.advent
 import org.mccandless.advent.geometry.Point
 import org.mccandless.advent.util.Parser
 import Prob20Types._
-
-import scala.collection.mutable
+import org.mccandless.advent.graph.Search
 
 object Prob20 extends Parser[String] with App{
 
@@ -117,37 +116,14 @@ object Prob20 extends Parser[String] with App{
     val start = getStart(maze)
     val end = getEnd(maze)
 
-
-    val distancesTo: mutable.Map[Point, Long] = mutable.Map.empty.withDefaultValue(Long.MaxValue)
-    distancesTo += (start -> 0L)
-    var states: List[Point] = List(start)
-
-
-    while (states.nonEmpty) {
-      val cur = states.head
-      println(s"at state $cur")
-      states = states.tail
-
-
-      val moves: Seq[Point] = getMoves(maze, cur)
-      moves.foreach { move =>
-
-        val newDist: Long = distancesTo(cur) + 1
-        if (newDist < distancesTo(move)) {
-          states = move :: states
-          distancesTo(move) = newDist
-        }
-      }
-    }
-
-
-    distancesTo(end)
+    val dfs: Search[Maze, Point] = (board: Maze, p: Point) => getMoves(board, p)
+    dfs.shortestPath(maze, start, end).get
   }
 
 
 
-//  println(part1(toMaze(toGrid(this.input(this.inputFileNameSmall1).toSeq))))
-//  println(part1(toMaze(toGrid(this.input(this.inputFileName).toSeq))))
+  println(part1(toMaze(toGrid(this.input(this.inputFileNameSmall1).toSeq))))
+  println(part1(toMaze(toGrid(this.input(this.inputFileName).toSeq))))
 
 
 
@@ -215,35 +191,13 @@ object Prob20 extends Parser[String] with App{
   // At any other level, AA and ZZ count as walls, but the other outer labeled tiles bring you one level outward
   // if we don't have enough recursion levels, there may not be a path
   def part2(maze: Maze): Option[Long] = {
-    val maxRec: Long = 28
+    val maxRec: Long = 26
     val start: RecPoint = RecPoint(0, getStart(maze))
     val end: RecPoint = RecPoint(0, getEnd(maze))
 
+    val dfs: Search[Maze, RecPoint] = (board: Maze, cur: RecPoint) => getRecMoves(board, cur, maxRec)
 
-    val distancesTo: mutable.Map[RecPoint, Long] = mutable.Map.empty.withDefaultValue(Long.MaxValue)
-    distancesTo += (start -> 0L)
-    var states: List[RecPoint] = List(start)
-
-
-    while (states.nonEmpty) {
-      val cur = states.head
-//      println(s"at state $cur")
-      states = states.tail
-
-
-      val moves: Seq[RecPoint] = getRecMoves(maze, cur, maxRec)
-      moves.foreach { move =>
-
-        val newDist: Long = distancesTo(cur) + 1
-        if (newDist < distancesTo(move)) {
-          states = move :: states
-          distancesTo(move) = newDist
-        }
-      }
-    }
-
-
-    distancesTo.get(end)
+    dfs.shortestPath(maze, start, end)
   }
 
   println(part2(toMaze(toGrid(this.input(this.inputFileNameSmall1).toSeq))))
