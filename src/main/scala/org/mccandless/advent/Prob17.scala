@@ -1,6 +1,5 @@
 package org.mccandless.advent
 
-import org.mccandless.advent.Prob11Types.{Left90, Right90, Rotate}
 import org.mccandless.advent.Prob17Types._
 import org.mccandless.advent.geometry.Point
 import org.mccandless.advent.intcode.Machine
@@ -44,14 +43,6 @@ object Prob17 extends ParsesIntCode with App {
     }
   }
 
-//  def getMapSize(map: Map[Point, Char]): Long = {
-//    val xMin = map.keys.minBy(_.x).x
-//    val xMax = map.keys.maxBy(_.x).x
-//    val yMin = map.keys.minBy(_.y).y
-//    val yMax = map.keys.maxBy(_.y).y
-//
-//    (xMax - xMin + 1) * (yMax - yMin + 1)
-//  }
 
   def getMap(program: Program): Map[Point, Char] = {
     val m: Machine = Machine(program)
@@ -60,9 +51,8 @@ object Prob17 extends ParsesIntCode with App {
     var x: Long = 0
     var y: Long = 0
     while(!m.isHalted) {
-      val o = m.run().output
-
-      if (o == 10) {
+      val o: Long = m.run().output
+      if (o == newLine) {
         y += 1
         x = 0
       }
@@ -78,7 +68,7 @@ object Prob17 extends ParsesIntCode with App {
     // get map
     val map: Map[Point, Char] = getMap(program)
     renderMap(map)
-    // get intersection points alingment parameters
+    // get intersection points alignment parameters
     // What is the sum of the alignment parameters
     intersectionPoints(map).map(alignmentParameter).sum
   }
@@ -87,7 +77,78 @@ object Prob17 extends ParsesIntCode with App {
 
 
 
-  def getStartingState(value: Map[Point, Char]) = ???
+  def getStartingState(value: Map[Point, Char]): State = {
+    val pos: Map[Point, Char] = value.filter(p => Cardinal.validChars.contains(p._2))
+    require(pos.size == 1)
+
+    val bot = pos.head
+    val dir = Cardinal(bot._2)
+
+    State(dir, bot._1, Set(bot._1))
+  }
+
+
+  def canMoveTo(cell: Char): Boolean = {
+    cell == scaffold.toChar || Cardinal.validChars.contains(cell)
+  }
+
+  def northOf(p: Point): Point = p + Point(0, -1)
+  def southOf(p: Point): Point = p + Point(0, 1)
+  def eastOf(p: Point): Point = p + Point(1, 0)
+  def westOf(p: Point): Point = p + Point(-1, 0)
+
+  def numScaffold(grid: Map[Point, Char]): Long = {
+    grid.values.count(canMoveTo)
+  }
+
+  def getValidMoves(grid: Map[Point, Char], curState: State): Set[MovementCommand] = {
+    val newGrid = grid.withDefaultValue(space.toChar)
+    val res: mutable.Set[MovementCommand] = mutable.Set(TurnLeft, TurnRight)
+
+    val curPoint = curState.point
+    curState.direction match {
+      case North => {
+        var curNorthPoint = northOf(curPoint)
+        while (canMoveTo(newGrid(curNorthPoint)) && !canMoveTo(newGrid(westOf(curNorthPoint))) && !canMoveTo(newGrid(eastOf(curNorthPoint)))) {
+          curNorthPoint = northOf(curNorthPoint)
+        }
+        val moves: Long = curPoint.y - curNorthPoint.y
+        if (moves > 1) {
+          res += MoveForward(moves)
+        }
+      }
+      case South =>
+        var curSouthPoint = southOf(curPoint)
+        while (canMoveTo(newGrid(curSouthPoint)) && !canMoveTo(newGrid(westOf(curSouthPoint))) && !canMoveTo(newGrid(eastOf(curSouthPoint)))) {
+          curSouthPoint = southOf(curSouthPoint)
+        }
+        val moves: Long = curSouthPoint.y - curState.point.y
+        if (moves > 1) {
+          res += MoveForward(moves)
+        }
+      case East =>
+        var curEastPoint = eastOf(curPoint)
+        while (canMoveTo(newGrid(curEastPoint)) && !canMoveTo(newGrid(northOf(curEastPoint))) && !canMoveTo(newGrid(southOf(curEastPoint)))) {
+          curEastPoint = eastOf(curEastPoint)
+        }
+        val moves: Long = curEastPoint.x - curState.point.x
+        if (moves > 1) {
+          res += MoveForward(moves)
+        }
+      case West =>
+        var curWestPoint = westOf(curPoint)
+        while (canMoveTo(newGrid(curWestPoint)) && !canMoveTo(newGrid(northOf(curWestPoint))) && !canMoveTo(newGrid(southOf(curWestPoint)))) {
+          curWestPoint = westOf(curWestPoint)
+        }
+        val moves: Long = curState.point.x - curWestPoint.x
+        if (moves > 1) {
+          res += MoveForward(moves)
+        }
+    }
+
+
+    res.toSet
+  }
 
   // part 2
   // visit every part of the scaffold at least once.
@@ -107,30 +168,58 @@ object Prob17 extends ParsesIntCode with App {
   // After visiting every part of the scaffold at least once, how much dust does the vacuum robot report it has collected?
 
   def getPath(map: Map[Point, Char]): Seq[MovementCommand] = {
-
-
-
+    val newMap = map.withDefaultValue(space.toChar)
+    val numValidCells: Long = numScaffold(map)
     // get starting state, scan map for our location and orientation
     val start: State = getStartingState(map)
 
+
+    // map states to previous states, used to reconstruct path
+    val cameFrom: mutable.Map[State, (State, MovementCommand)] = mutable.Map.empty
     val distancesTo: mutable.Map[State, Long] = mutable.Map.empty.withDefaultValue(Long.MaxValue)
     distancesTo += (start -> 0L)
     var states: List[State] = List(start)
 
     while (states.nonEmpty) {
-      val curState = states.head
+      println(s"num pending states: ${states.size}")
+      val prevState: State = states.head
       states = states.tail
-
-
       // get validMoves
-//      val paths = getValidMoves(map, curState)
+      val cmds: Set[MovementCommand] = getValidMoves(map, prevState)
+      println(s"$prevState , $cmds")
 
+      cmds.foreach { cmd: MovementCommand =>
+        val newState: State = prevState.next(cmd)
+        if (!canMoveTo(newMap(newState.point))) {
+          println(newState)
+          println(newMap(newState.point))
+        }
+//        require(canMoveTo(newMap(newState.point)))
+        else {
+          val newDist = distancesTo(prevState) + 1
+          if (newDist < distancesTo(newState)) {
+            states = states :+ newState
+            distancesTo(newState) = newDist
+            cameFrom(newState) = (prevState, cmd)
+            if (newState.visited.size == numValidCells) {
+              throw new RuntimeException("found a path")
+            }
+          }
+        }
+      }
     }
 
+    val end: State = distancesTo.filter(_._1.visited.size == numValidCells).minBy(_._2)._1
+    var path: List[MovementCommand] = Nil
 
-
-
-    Seq(TurnLeft, MoveForward(10), TurnRight, MoveForward(8), TurnLeft, MoveForward(6), TurnRight, MoveForward(6), TurnLeft, MoveForward(8))
+    var curPathNode: State = end
+    while (curPathNode != start) {
+      val (prevState, cmd) = cameFrom(curPathNode)
+      curPathNode = prevState
+      path = cmd :: path
+    }
+//    Seq(TurnLeft, MoveForward(10), TurnRight, MoveForward(8), TurnLeft, MoveForward(6), TurnRight, MoveForward(6), TurnLeft, MoveForward(8))
+    path
   }
 
   def compressPath(path: Seq[MovementCommand]): MovementStrategy = {
@@ -205,7 +294,7 @@ object Prob17Types {
   val tumbling: Long = 'X'.toLong
 
 
-  def encode(commands: Seq[Code]): Seq[Long] = commands.map(_.rep).mkString(",").map(_.toLong) :+ newLine
+  def encode(commands: Seq[Code]): Seq[Long] = commands.map(_.rep).mkString(",").toCharArray.map(_.toLong) :+ newLine
 
   trait Code {
     val rep: String
@@ -241,24 +330,35 @@ object Prob17Types {
   // store (direction, point)
   case class State(direction: Cardinal, point: Point, visited: Set[Point]) {
 
-
-
+    // TODO handle visited
     def next(cmd: MovementCommand): State = (direction, point, cmd) match {
       case (North, _, TurnLeft) => this.copy(direction = West)
       case (North, _, TurnRight) => this.copy(direction = East)
-      case (North, p, MoveForward(steps)) => this.copy(point = p + Point(0, -steps))
+      case (North, oldPoint, MoveForward(steps)) => {
+        val newPoint: Point = oldPoint + Point(0, -steps)
+        this.copy(point = newPoint, visited = visited + newPoint)
+      }
 
       case (South, _, TurnLeft) => this.copy(direction = East)
       case (South, _, TurnRight) => this.copy(direction = West)
-      case (South, p, MoveForward(steps)) => this.copy(point = p + Point(0, steps))
+      case (South, oldPoint, MoveForward(steps)) => {
+        val newPoint: Point = oldPoint + Point(0, steps)
+        this.copy(point = newPoint, visited = visited + newPoint)
+      }
 
       case (East, _, TurnLeft) => this.copy(direction = North)
       case (East, _, TurnRight) => this.copy(direction = South)
-      case (East, p, MoveForward(steps)) => this.copy(point = p + Point(steps, 0))
+      case (East, oldPoint, MoveForward(steps)) => {
+        val newPoint: Point = oldPoint + Point(steps, 0)
+        this.copy(point = newPoint, visited = visited + newPoint)
+      }
 
       case (West, _, TurnLeft) => this.copy(direction = South)
       case (West, _, TurnRight) => this.copy(direction = North)
-      case (West, p, MoveForward(steps)) => this.copy(point = p + Point(-steps, 0))
+      case (West, oldPoint, MoveForward(steps)) => {
+        val newPoint: Point = oldPoint + Point(-steps, 0)
+        this.copy(point = newPoint, visited = visited + newPoint)
+      }
     }
   }
 

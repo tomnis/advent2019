@@ -9,3 +9,15 @@ case object North extends Cardinal
 case object South extends Cardinal
 case object East extends Cardinal
 case object West extends Cardinal
+
+object Cardinal {
+  val validChars: Set[Char] = Set('^', 'V', '<', '>')
+
+  def apply(c: Char): Cardinal = c match {
+    case '^' => North
+    case 'v' => South
+    case '>' => East
+    case '<' => West
+    case _ => ???
+  }
+}
