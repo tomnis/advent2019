@@ -146,8 +146,66 @@ object Prob20 extends Parser[String] with App{
 
 
 
-  println(part1(toMaze(toGrid(this.input(this.inputFileNameSmall1).toSeq))))
-  println(part1(toMaze(toGrid(this.input(this.inputFileName).toSeq))))
+//  println(part1(toMaze(toGrid(this.input(this.inputFileNameSmall1).toSeq))))
+//  println(part1(toMaze(toGrid(this.input(this.inputFileName).toSeq))))
+
+
+
+  def getRecMoves(maze: Maze, cur: RecPoint, maxRec: Long): Seq[RecPoint] = {
+    // check all 4 directions, and check label to teleport
+    val moves: List[RecPoint] = List(northOf(cur.point), eastOf(cur.point), southOf(cur.point), westOf(cur.point)).filter { p =>
+      maze(p).isInstanceOf[Passage]
+    }.map { p =>
+      RecPoint(cur.level, p)
+    }
+
+
+    val maybeLabel = maze(cur.point).asInstanceOf[Passage].maybeLabel
+
+
+
+    // if we are at outer level, level 0,
+    //   outer labels dont mean anything
+    //   inner labels will increment our level
+    //
+    // check if we are at outer label
+    val maxX: Long = maze.keys.maxBy(_.x).x
+    val maxY: Long = maze.keys.maxBy(_.y).y
+    val atOuterLabel: Boolean = cur.point.x == 2 || cur.point.y == 2 || cur.point.x == maxX - 2 || cur.point.y == maxY - 2
+
+
+
+    if (maybeLabel.isDefined && maybeLabel.get != "AA" && maybeLabel.get != "ZZ") {
+      // get the corresponding label
+      val pair: Map[Point, Cell] = maze.filter { case (p, cell) =>
+        cell match {
+          case Wall => false
+          case Passage(secondLabel) if secondLabel.isDefined => secondLabel.get == maybeLabel.get
+          case _ => false
+        }
+      }
+      require(pair.size == 2)
+
+      val portalMove = pair.keys.filter(_ != cur.point).head
+      if (cur.level == 0) {
+        if (atOuterLabel) moves
+        else RecPoint(1, portalMove) :: moves
+      }
+      // recursion depth limit
+      else if (cur.level == maxRec) {
+        moves
+      }
+      else {
+        if (atOuterLabel) RecPoint(cur.level - 1, portalMove) :: moves
+        else RecPoint(cur.level + 1, portalMove) :: moves
+      }
+    }
+    else {
+      moves
+    }
+  }
+
+
 
 
 
@@ -155,9 +213,41 @@ object Prob20 extends Parser[String] with App{
   // when we enter the maze, we are at outermost level
   // all other outer labeled tiles are effectively walls.
   // At any other level, AA and ZZ count as walls, but the other outer labeled tiles bring you one level outward
-  def part2(maze: Maze): Long = {
+  // if we don't have enough recursion levels, there may not be a path
+  def part2(maze: Maze): Option[Long] = {
+    val maxRec: Long = 28
+    val start: RecPoint = RecPoint(0, getStart(maze))
+    val end: RecPoint = RecPoint(0, getEnd(maze))
 
+
+    val distancesTo: mutable.Map[RecPoint, Long] = mutable.Map.empty.withDefaultValue(Long.MaxValue)
+    distancesTo += (start -> 0L)
+    var states: List[RecPoint] = List(start)
+
+
+    while (states.nonEmpty) {
+      val cur = states.head
+//      println(s"at state $cur")
+      states = states.tail
+
+
+      val moves: Seq[RecPoint] = getRecMoves(maze, cur, maxRec)
+      moves.foreach { move =>
+
+        val newDist: Long = distancesTo(cur) + 1
+        if (newDist < distancesTo(move)) {
+          states = move :: states
+          distancesTo(move) = newDist
+        }
+      }
+    }
+
+
+    distancesTo.get(end)
   }
+
+  println(part2(toMaze(toGrid(this.input(this.inputFileNameSmall1).toSeq))))
+  println(part2(toMaze(toGrid(this.input(this.inputFileName).toSeq))))
 }
 
 
@@ -186,11 +276,11 @@ object Prob20Types {
   }
 
 
+  // point together with our recursion level in the maze
+  case class RecPoint(level: Long, point: Point)
 
   type Maze = Map[Point, Cell]
 
 
   type RawInput = Map[Point, Char]
-  val passage: Char = '.'
-  val wall: Char = '#'
 }
