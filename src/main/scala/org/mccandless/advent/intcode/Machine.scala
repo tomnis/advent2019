@@ -53,6 +53,8 @@ case class Machine(program: Seq[Long]) {
   }
 
 
+   def runUntilInput(): Unit = while(!this.isAwaitingInput && !this.isHalted) print(this.run().output.toChar)
+
   def process(op: Op): Effect = {
     val params: Seq[Long] = (ip + 1).until(ip + 1 + op.numParams).map(mem(_))
 //    println(s"$op ${params.toList}")
