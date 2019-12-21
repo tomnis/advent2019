@@ -39,7 +39,7 @@ object Prob21 extends ParsesIntCode with App {
     // or them together
 
     // idea: always jump if there is ground at d
-    Seq(OR(A, J), NOT(B, T), AND(T, J), AND(D, J), NOT(A, T), OR(T, J), NOT(C, T), AND(B, T), AND(A, T), AND(D, T), OR(T, J),
+    Seq(OR(A, J), NOT(B, T), AND(T, J), AND(D, J), NOT(A, T), OR(T, J), NOT(C, T), AND(B, T), AND(A, T), AND(D, T), AND(H, T), OR(T, J),
 
       // for part 2
 //      NOT(D, T), AND(C, T), AND(B, T), AND(A, T), NOT(T, T), AND(T, J)
