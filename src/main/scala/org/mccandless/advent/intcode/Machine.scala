@@ -101,14 +101,17 @@ case class Machine(program: Seq[Long]) {
       case Pure =>
         incIp()
       case Store(value, addr) =>
+        out = -1
         mem(addr) = value
         incIp()
       case Jump(newIp) =>
+        out = -1
         ip = newIp.toInt
       case Print(value) =>
         out = value
         incIp()
       case IncRelBase(diff) =>
+        out = -1
         relBase += diff
         incIp()
     }
