@@ -5,7 +5,7 @@ import scala.collection.mutable
 
 case class Machine(program: Seq[Long]) {
 
-  var out: Long = 0
+  var out: Long = -1
   var ip: Long = 0
   var relBase: Long = 0
   var isAwaitingInput: Boolean = false
