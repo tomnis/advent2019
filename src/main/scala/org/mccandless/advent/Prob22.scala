@@ -1,6 +1,6 @@
 package org.mccandless.advent
 
-import org.mccandless.advent.Prob22Types.{Card, Cut, CutNegative, DealIntoStack, DealWithIncrement, Deck, ShuffleOp}
+import org.mccandless.advent.Prob22Types.{Card, Cut, CutNegative, DealIntoStack, DealWithIncrement, Deck, LinComb, ShuffleOp}
 import org.mccandless.advent.util.Parser
 
 import scala.collection.mutable
@@ -84,30 +84,92 @@ object Prob22 extends Parser[ShuffleOp] with App {
 
 
 //  println(part1(this.input().toSeq))
+  def combineRev(ops: Seq[ShuffleOp], deckSize: Long) = {
+
+    ops.foldRight(LinComb.identity) {
+      case (DealIntoStack, acc) => acc.copy(a = acc.a * -1, b = deckSize - acc.b - 1 )
+      case (Cut(n), acc) => acc.copy(b = (acc.b + n) % deckSize)
+      case (CutNegative(n), acc) => acc.copy(b = (acc.b - n) % deckSize)
+      case (DealWithIncrement(inc), acc) => {
+        /**
+         * z = pow(n,L-2,L) # == modinv(n,L)
+         * a = a*z % L
+         * b = b*z % L
+         */
+        // n ^ (L - 2) % L
+        val z = pow(inc, deckSize - 2, deckSize)
+        acc.copy(
+          a = (acc.a * z) % deckSize,
+          b = (acc.b * z) % deckSize
+        )
+      }
+    }
+  }
+
+  def pow(base: Long, exp: Long, mod: Long): Long = {
+    var t: Long = 1L
+    var curBase: Long = base
+    var curExp: Long = exp
+
+    while (curExp > 0) {
+
+      if (curExp % 2 != 0) {
+        t = (t * curBase) % mod
+      }
+
+      curBase = (curBase * curBase) % mod;
+      curExp /= 2;
+    }
+
+    t % mod
+  }
+
+
+
+  // (ax+b)^m % n
+  def polyPow(c: LinComb, m: Long, n: Long): LinComb = {
+//    if m==0:
+//    return 1,0
+//    if m%2==0:
+//    return polypow(a*a%n, (a*b+b)%n, m//2, n)
+//    else:
+//    c,d = polypow(a,b,m-1,n)
+//    return a*c%n, (a*d+b)%n
+    if (m == 0L) {
+      LinComb.identity
+    }
+    else if (m % 2 == 0L) {
+      val newComb = c.copy(
+        a = (c.a * c.a) % n,
+        b = (c.a * c.b + c.b) % n
+      )
+      polyPow(newComb, m / 2, n)
+    }
+    else {
+      val newComb = polyPow(c, m - 1, n)
+      newComb.copy(
+        a = (c.a * newComb.a) % n,
+        b = (c.a * newComb.b + c.b) % n
+      )
+    }
+  }
+
+
 
 
   def part2(ops: Seq[ShuffleOp]): Long = {
+    val deckSize: Long = 119315717514047L
+    val numShuffles: Long = 101741582076661L
 
 
-    var deck: Seq[Card] = (0L to 119315717514047L).map(i => Card(i))
+    val l: LinComb = combineRev(ops, deckSize)
+    val comb = polyPow(l, numShuffles, deckSize)
 
-    ops foreach { op =>
-      val newDeck = op match {
-        case Cut(n) => cutN(deck, n)
-        case CutNegative(n) => cutNegativeN(deck, n)
-        case DealIntoStack => dealIntoStack(deck)
-        case DealWithIncrement(n) => dealWithIncrement(deck, n)
-      }
-
-      deck = newDeck
-
-      println(s"at 2020: ${deck(2020)}")
-    }
-
-    0
+    (2020 * comb.a + comb.b) % deckSize
   }
 
-  part2(this.input().toSeq)
+  // 38728028849073 too low
+  println(part2(this.input().toSeq))
 }
 
 
@@ -116,6 +178,12 @@ object Prob22Types {
 
   case class Card(number: Long)
 
+  // ax + b
+  case class LinComb(a: Long, b: Long)
+
+  object LinComb {
+    val identity: LinComb = LinComb(1, 0)
+  }
 
 
 

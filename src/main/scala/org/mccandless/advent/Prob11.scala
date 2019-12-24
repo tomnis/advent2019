@@ -74,7 +74,7 @@ object Prob11 extends App with ParsesIntCode {
 
 
 
-  val soln1: Hull = part1(this.input().next() ++ Array.fill(10000)(0L))
+  val soln1: Hull = part1(this.input().next())
   println(soln1.size)
 
 
