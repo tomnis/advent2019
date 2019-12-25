@@ -39,10 +39,6 @@ object Prob24 extends Parser[String] with App {
       }
       println(s"  $y")
     }
-//    for (x <- xMin to xMax) { print(if (x / 10 > 0) x / 10 else " ") }
-//    println()
-//    for (x <- xMin to xMax) { print(x % 10) }
-//    println()
   }
 
   def numAdjacentBugs(grid: Grid, p: Point): Long = {
@@ -167,7 +163,7 @@ object Prob24 extends Parser[String] with App {
     val outerLevel: Long = recP.level - 1
     val innerLevel: Long = recP.level + 1
 
-    val candidates: Seq[RecPoint] = (point.x, point.y) match {
+   (point.x, point.y) match {
       // shouldnt ever happen
       case (2, 2) => ???
 
@@ -213,12 +209,6 @@ object Prob24 extends Parser[String] with App {
       case _ =>
         Seq(recP.up, recP.down, recP.left, recP.right)
     }
-
-    // make sure everything is in bounds. not strictly necessary as we have default values elsewhere
-//    candidates.filter { p =>
-//        p.point.x >= 0 && p.point.x <= 4 && p.point.y >= 0 && p.point.y <= 4 && p.point != center
-//    }
-    candidates
   }
 
 
@@ -236,25 +226,19 @@ object Prob24 extends Parser[String] with App {
 
 
   def nextRecGrid(grid: RecGrid): RecGrid = {
-    val minLevel = grid.keys.map(_.level).min
-    val maxLevel = grid.keys.map(_.level).max
+    val bugs: Set[RecPoint] = grid.filter(_._2 == Bug).keys.toSet
+    val bugNeighbors: Set[RecPoint] = bugs.flatMap(getNeighbors)
 
-    val points: Seq[RecPoint] = for {
-      level <- (minLevel - 1) to (maxLevel + 1)
-      y <- Seq(0,1,3,4)
-      x <- Seq(0,1,3,4)
-    } yield RecPoint(level, Point(x, y))
-
-
-    points.map { p =>
-      grid.withDefaultValue(Empty)(p) match {
+    bugNeighbors.map { neighbor =>
+      grid.withDefaultValue(Empty)(neighbor) match {
         case Bug =>
-          if (numAdjacentBugsRec(grid, p) == 1) (p, Bug)
-          else (p, Empty)
+          if (numAdjacentBugsRec(grid, neighbor) == 1)  (neighbor, Bug)
+          else (neighbor, Empty)
+
         case Empty =>
-          val n = numAdjacentBugsRec(grid, p)
-          if (n == 1 || n == 2) (p, Bug)
-          else (p, Empty)
+          val n = numAdjacentBugsRec(grid, neighbor)
+          if (n == 1 || n == 2) (neighbor, Bug)
+          else (neighbor, Empty)
       }
     }.toMap
   }
@@ -293,7 +277,7 @@ object Prob24 extends Parser[String] with App {
   val testGrid = toGrid(test)
 
   part2(testGrid)
-//  part2(toGrid(this.input().toSeq))
+  part2(toGrid(this.input().toSeq))
 }
 
 
