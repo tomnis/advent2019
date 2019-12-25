@@ -149,55 +149,87 @@ object Prob24 extends Parser[String] with App {
 
    */
 
+  val center: Point = Point(2,2)
+  val topCenter: Point = Point(2,1)
+  val bottomCenter: Point = Point(2,3)
+  val leftCenter: Point = Point(1,2)
+  val rightCenter: Point = Point(3,2)
 
-  def getNeighbors(grid: RecGrid, p: RecPoint): Seq[RecPoint] = {
-    val point = p.point
-    val candidates: Seq[RecPoint] = p match {
+  val topRow: Seq[Point] = (0 to 4).map(i => Point(i, 0))
+  val bottomRow: Seq[Point] = (0 to 4).map(i => Point(i, 4))
+  val leftCol: Seq[Point] = (0 to 4).map(i => Point(0, i))
+  val rightCol: Seq[Point] = (0 to 4).map(i => Point(4, i))
+
+
+
+  def getNeighbors(recP: RecPoint): Seq[RecPoint] = {
+    val point = recP.point
+    val outerLevel: Long = recP.level - 1
+    val innerLevel: Long = recP.level + 1
+
+    val candidates: Seq[RecPoint] = (point.x, point.y) match {
       // shouldnt ever happen
-      case RecPoint(l, Point(2, 2)) => ???
+      case (2, 2) => ???
 
-      case RecPoint(l, Point(0, 0)) =>
-        Seq(point.right, point.down, )
+        // top left corner
+      case (0, 0) =>
+        Seq(recP.right, recP.down) ++ Seq(topCenter, leftCenter).map(RecPoint(outerLevel, _))
+        // top right corner
+      case (4, 0) =>
+        Seq(recP.left, recP.down) ++ Seq(topCenter, rightCenter).map(RecPoint(outerLevel, _))
+        // bottom left corner
+      case (0, 4) =>
+        Seq(recP.up, recP.right) ++ Seq(leftCenter, bottomCenter).map(RecPoint(outerLevel, _))
+        // bottom right corner
+      case (4, 4) =>
+        Seq(recP.up, recP.left) ++ Seq(rightCenter, bottomCenter).map(RecPoint(outerLevel, _))
 
 
       // if we are in the
       // add top row from the inner nested grid
-      case RecPoint(l, Point(2, 1)) =>
-        (Seq(point.up, point.left, point.right) ++ (0 to 4).map(i => Point(i, 0))).map(p => RecPoint(l + 1, p))
+      case (2, 1) =>
+        Seq(recP.up, recP.left, recP.right) ++  topRow.map(p => RecPoint(innerLevel, p))
       // add bottom row from inner nested grid
-      case RecPoint(l, Point(2, 3)) =>
-        (Seq(point.down, point.left, point.right) ++ (0 to 4).map(i => Point(i, 4))).map(p => RecPoint(l + 1, p))
+      case (2, 3) =>
+        Seq(recP.down, recP.left, recP.right) ++ bottomRow.map(p => RecPoint(innerLevel, p))
       // add left row from inner nested grid
-      case RecPoint(l, Point(1, 2)) =>
-        (Seq(point.down, point.left, point.up) ++ (0 to 4).map(i => Point(0, i))).map(p => RecPoint(l + 1, p))
+      case (1, 2) =>
+        Seq(recP.down, recP.left, recP.up) ++ leftCol.map(p => RecPoint(innerLevel, p))
       // add right from inner nested grid
-      case RecPoint(l, Point(3, 2)) =>
-        (Seq(point.down, point.up, point.right) ++ (0 to 4).map(i => Point(4, i))).map(p => RecPoint(l + 1, p))
+      case (3, 2) =>
+        Seq(recP.down, recP.up, recP.right) ++ rightCol.map(p => RecPoint(innerLevel, p))
 
         // add outer levels
-      case RecPoint(l, Point(x, 0)) => // add (2,1) on outer level
-        Seq(point.left, point.right, point.down, Point(2,1)).map(p => RecPoint(l - 1, p))
-      case RecPoint(l, Point(x, 4)) => // add (2,3) on outer level
-        Seq(point.left, point.right, point.up, Point(2,3)).map(p => RecPoint(l - 1, p))
-      case RecPoint(l, Point(0, y)) => // add (1,2) on outer level
-        Seq(point.up, point.down, point.left, Point(1,2)).map(p => RecPoint(l - 1, p))
-      case RecPoint(l, Point(4, y)) => // add (3,2) on outer level
-        Seq(point.up, point.down, point.right, Point(3,2)).map(p => RecPoint(l - 1, p))
+      case (x, 0) => // add (2,1) on outer level
+        Seq(recP.left, recP.right, recP.down, RecPoint(outerLevel, topCenter))
+      case (x, 4) => // add (2,3) on outer level
+        Seq(recP.left, recP.right, recP.up, RecPoint(outerLevel, bottomCenter))
+      case (0, y) => // add (1,2) on outer level
+        Seq(recP.up, recP.down, recP.right, RecPoint(outerLevel, leftCenter))
+      case (4, y) => // add (3,2) on outer level
+        Seq(recP.up, recP.down, recP.left, RecPoint(outerLevel, rightCenter))
 
-      case RecPoint(l, _) =>
-        Seq(point.up, point.down, point.left, point.right).map(p => RecPoint(l, p)).filter(_.point != Point(2,2))
-      // stay within our own level
-//      case RecPoint(l, p) => Seq(p.up, p.down, p.left, p.right).map(p => RecPoint(l, p))
+        // everything within our own level
+      case _ =>
+        Seq(recP.up, recP.down, recP.left, recP.right)
     }
 
-    candidates.filter { p =>
-        p.point.x >= 0 && p.point.x <= 4 && p.point.y >= 0 && p.point.y <= 4
-    }
+    // make sure everything is in bounds. not strictly necessary as we have default values elsewhere
+//    candidates.filter { p =>
+//        p.point.x >= 0 && p.point.x <= 4 && p.point.y >= 0 && p.point.y <= 4 && p.point != center
+//    }
+    candidates
   }
 
 
+  println(getNeighbors(RecPoint(0, Point(3,3))))
+  println(getNeighbors(RecPoint(0, Point(1,1))))
+  println(getNeighbors(RecPoint(0, Point(0,0))))
+  println(getNeighbors(RecPoint(0, Point(3,2))))
+
+
   def numAdjacentBugsRec(grid: RecGrid, point: RecPoint): Long = {
-    val neighbors: Seq[RecPoint] = getNeighbors(grid, point)
+    val neighbors: Seq[RecPoint] = getNeighbors(point)
     neighbors.map(grid.withDefaultValue(Empty)(_)).count(_ == Bug)
   }
 
@@ -208,7 +240,7 @@ object Prob24 extends Parser[String] with App {
     val maxLevel = grid.keys.map(_.level).max
 
     val points: Seq[RecPoint] = for {
-      level <- (minLevel - 2) to (maxLevel + 2)
+      level <- (minLevel - 1) to (maxLevel + 1)
       y <- Seq(0,1,3,4)
       x <- Seq(0,1,3,4)
     } yield RecPoint(level, Point(x, y))
@@ -240,7 +272,9 @@ object Prob24 extends Parser[String] with App {
     (1 to 200).foreach { minute =>
       val newGrid: RecGrid = nextRecGrid(recGrid)
       val numBugs = newGrid.values.count(_ == Bug)
-      println(s"bugs after $minute minutes: $numBugs")
+      val minLevel: Long = newGrid.keys.map(_.level).min
+      val maxLevel: Long = newGrid.keys.map(_.level).max
+      println(s"bugs after $minute minutes: $numBugs, levels: ($minLevel, $maxLevel)")
       recGrid = newGrid
     }
     0
