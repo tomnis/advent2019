@@ -1,5 +1,7 @@
 package org.mccandless.advent
 
+import java.math.BigInteger
+
 import org.mccandless.advent.Prob22Types.{Card, Cut, CutNegative, DealIntoStack, DealWithIncrement, Deck, LinComb, ShuffleOp}
 import org.mccandless.advent.util.Parser
 
@@ -84,12 +86,12 @@ object Prob22 extends Parser[ShuffleOp] with App {
 
 
 //  println(part1(this.input().toSeq))
-  def combineRev(ops: Seq[ShuffleOp], deckSize: Long) = {
+  def combineRev(ops: Seq[ShuffleOp], deckSize: BigInt): LinComb = {
 
     ops.foldRight(LinComb.identity) {
       case (DealIntoStack, acc) => acc.copy(a = acc.a * -1, b = deckSize - acc.b - 1 )
-      case (Cut(n), acc) => acc.copy(b = (acc.b + n) % deckSize)
-      case (CutNegative(n), acc) => acc.copy(b = (acc.b - n) % deckSize)
+      case (Cut(n), acc) => acc.copy(b = (acc.b + n).mod(deckSize))
+      case (CutNegative(n), acc) => acc.copy(b = (acc.b - n).mod(deckSize))
       case (DealWithIncrement(inc), acc) => {
         /**
          * z = pow(n,L-2,L) # == modinv(n,L)
@@ -97,37 +99,40 @@ object Prob22 extends Parser[ShuffleOp] with App {
          * b = b*z % L
          */
         // n ^ (L - 2) % L
-        val z = pow(inc, deckSize - 2, deckSize)
+        val z: BigInt = pow(inc, deckSize - 2, deckSize)
         acc.copy(
-          a = (acc.a * z) % deckSize,
-          b = (acc.b * z) % deckSize
+          a = (acc.a * z).mod(deckSize),
+          b = (acc.b * z).mod(deckSize)
         )
       }
     }
   }
 
-  def pow(base: Long, exp: Long, mod: Long): Long = {
-    var t: Long = 1L
-    var curBase: Long = base
-    var curExp: Long = exp
-
-    while (curExp > 0) {
-
-      if (curExp % 2 != 0) {
-        t = (t * curBase) % mod
-      }
-
-      curBase = (curBase * curBase) % mod;
-      curExp /= 2;
-    }
-
-    t % mod
+  def pow(base: BigInt, exp: BigInt, mod: BigInt): BigInt = {
+//    var t: Long = 1L
+//    var curBase: Long = base
+//    var curExp: Long = exp
+//
+//    while (curExp > 0) {
+//
+//      if (curExp % 2 != 0) {
+//        t = (t * curBase) % mod
+//      }
+//
+//      curBase = (curBase * curBase) % mod;
+//      curExp /= 2;
+//    }
+//
+//    t % mod
+    base.modPow(exp, mod)
   }
 
+  println(pow(36, 119315717514045L,119315717514047L))
+  require(pow(36, 119315717514045L,119315717514047L) == 43086231324517L)
 
 
   // (ax+b)^m % n
-  def polyPow(c: LinComb, m: Long, n: Long): LinComb = {
+  def polyPow(c: LinComb, m: BigInt, n: BigInt): LinComb = {
 //    if m==0:
 //    return 1,0
 //    if m%2==0:
@@ -135,21 +140,21 @@ object Prob22 extends Parser[ShuffleOp] with App {
 //    else:
 //    c,d = polypow(a,b,m-1,n)
 //    return a*c%n, (a*d+b)%n
-    if (m == 0L) {
+    if (m == BigInt(0)) {
       LinComb.identity
     }
     else if (m % 2 == 0L) {
       val newComb = c.copy(
-        a = (c.a * c.a) % n,
-        b = (c.a * c.b + c.b) % n
+        a = (c.a * c.a).mod(n),
+        b = (c.a * c.b + c.b).mod(n)
       )
       polyPow(newComb, m / 2, n)
     }
     else {
       val newComb = polyPow(c, m - 1, n)
       newComb.copy(
-        a = (c.a * newComb.a) % n,
-        b = (c.a * newComb.b + c.b) % n
+        a = (c.a * newComb.a).mod(n),
+        b = (c.a * newComb.b + c.b).mod(n)
       )
     }
   }
@@ -157,9 +162,9 @@ object Prob22 extends Parser[ShuffleOp] with App {
 
 
 
-  def part2(ops: Seq[ShuffleOp]): Long = {
-    val deckSize: Long = 119315717514047L
-    val numShuffles: Long = 101741582076661L
+  def part2(ops: Seq[ShuffleOp]): BigInt = {
+    val deckSize: BigInt = 119315717514047L
+    val numShuffles: BigInt = 101741582076661L
 
 
     val l: LinComb = combineRev(ops, deckSize)
@@ -169,6 +174,9 @@ object Prob22 extends Parser[ShuffleOp] with App {
   }
 
   // 38728028849073 too low
+  // 55722059438744 too low
+  // 58059654365077 too low
+  // 63686831161251 wrong
   println(part2(this.input().toSeq))
 }
 
@@ -179,7 +187,7 @@ object Prob22Types {
   case class Card(number: Long)
 
   // ax + b
-  case class LinComb(a: Long, b: Long)
+  case class LinComb(a: BigInt, b: BigInt)
 
   object LinComb {
     val identity: LinComb = LinComb(1, 0)
